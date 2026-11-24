@@ -177,6 +177,21 @@ trait AbstractBot_Notification_Events
             $thresholdScope = null;
         }
         #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        # A drop purchase is a purchase, so it goes under the switches a user already has for buying and
+        # selling rather than asking them about a new kind of notification.
+        else if ($notificationType == Enum\NotificationType::DropBuy)
+        {
+            $notifyFilter   = OptionsNotifier::kNotify_TokenPurchased;
+            $notification   = Notification\Transaction\DropBuy::I($user);
+            $thresholdScope = OptionsNotifier::kThresholdTransaction;
+        }
+        else if ($notificationType == Enum\NotificationType::DropSold)
+        {
+            $notifyFilter   = OptionsNotifier::kNotify_TokenSold;
+            $notification   = Notification\Transaction\DropSold::I($user);
+            $thresholdScope = OptionsNotifier::kThresholdTransaction;
+        }
+        #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # Comments carry no amount, so no threshold can apply to them
         else if ($notificationType == Enum\NotificationType::TokenComment)
         {
@@ -419,6 +434,9 @@ trait AbstractBot_Notification_Events
             case Enum\NotificationType::TokenOffer:
 
             case Enum\NotificationType::CollectionOffer:
+
+            case Enum\NotificationType::DropBuy:
+            case Enum\NotificationType::DropSold:
 
             case Enum\NotificationType::AuctionStart:
             case Enum\NotificationType::AuctionEnd_NoWinner:
