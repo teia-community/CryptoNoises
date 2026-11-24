@@ -85,6 +85,10 @@ class MarketDeals extends AbstractEntity
             case Setapp\ObjktCom_v1::Bigmap_AuctionsEnglish:    return self::PackDealRecord_ObjktComV1_AuctionsEnglish($bigmap, $value);
             case Setapp\ObjktCom_v1::Bigmap_AuctionsDutch:      return self::PackDealRecord_ObjktComV1_AuctionsDutch($bigmap, $value);
 
+            // objkt.com's first two auction contracts: the values carry the same keys as the pair above
+            case Setapp\ObjktCom_v1::Bigmap_AuctionsEnglish_pre: return self::PackDealRecord_ObjktComV1_AuctionsEnglish($bigmap, $value);
+            case Setapp\ObjktCom_v1::Bigmap_AuctionsDutch_pre:   return self::PackDealRecord_ObjktComV1_AuctionsDutch($bigmap, $value);
+
             case Setapp\ObjktCom_v2::Bigmap_Swaps:              return self::PackDealRecord_ObjktComV2_Swaps($bigmap, $value);
             case Setapp\ObjktCom_v2::Bigmap_AuctionsEnglish:    return self::PackDealRecord_ObjktComV2_AuctionsEnglish($bigmap, $value);
             case Setapp\ObjktCom_v2::Bigmap_AuctionsDutch:      return self::PackDealRecord_ObjktComV2_AuctionsDutch($bigmap, $value);

@@ -15,7 +15,9 @@ class ObjktComV1Hunter_Auctions extends ObjktComV1Hunter
     public function parseTransaction(array $recInit, array $subRecords): bool
     {
         if ($recInit['target'] != self::kEnglishAuctionsKTID &&
-            $recInit['target'] != self::kDutchAuctionsKTID)
+            $recInit['target'] != self::kDutchAuctionsKTID &&
+            $recInit['target'] != self::kEnglishAuctionsKTID_pre &&
+            $recInit['target'] != self::kDutchAuctionsKTID_pre)
             return false;
 
         $entrypoint = $recInit['entrypoint'];
