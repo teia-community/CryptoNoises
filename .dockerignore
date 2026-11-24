@@ -1,0 +1,22 @@
+# Dependencies are installed in the build's vendor stage
+vendor/
+
+# Local configuration: the image ships env-driven templates instead (docker/config/)
+.env
+config/consts-secrets.php
+config/environment.php
+
+# Runtime data (compose mounts volumes over these)
+log/*
+!log/.gitkeep
+external-ipfs/*
+!external-ipfs/.gitkeep
+external-storage/*
+!external-storage/.gitkeep
+
+.git/
+.gitignore
+.idea/
+.claude/
+.DS_Store
+scratch/

@@ -8,6 +8,16 @@ return [
     'environment'       => 'development-local',
 
     //------------------------------------------------------------------------------------------------------------------
+    // How long a looping command (sync, analyze, /jobs/exec, the notifiers) works before it exits.
+    //
+    // 55 is right when cron starts them every minute. If you run them as long-lived services instead and let a
+    // supervisor restart them, raise this: it is the process lifetime, not a limit for one task.
+
+    'worker' => [
+        'time_limit_sec'    => 55,
+    ],
+
+    //------------------------------------------------------------------------------------------------------------------
     // CryptoNoises (bots + API)
 
     'api' => [
@@ -78,6 +88,17 @@ return [
     // CryptoNoisesTezos (indexer)
 
     'tezos' => [
+        // TzKT API base URL, without a trailing slash. All chain data comes from here.
+        // The public api.tzkt.io rate-limits: the indexer asks it for every block, every unseen bigmap and every
+        // contract, so running more than a few workers earns HTTP 429 ("Cannot get bigmap data from tzkt").
+        // Point this at a TzKT you run if you index at any scale.
+        'tzkt_api_url'                          => 'https://api.tzkt.io/v1',
+
+        // IPFS gateway that token metadata and media are read through.
+        // The public ipfs.io gateway rate-limits heavily, which surfaces as "IPFS returned empty data" in the
+        // sync-tokens-metadata / sync-ipfs job notices, so prefer a gateway you run or pay for.
+        'ipfs_gateway_url'                      => 'https://ipfs.io/ipfs/',
+
         // Public URL + local path where media previews are stored and served from
         'ipfs_local_base_url'                   => 'https://ipfs.example.com',
         'ipfs_local_base_path'                  => __DIR__.'/../external-ipfs',

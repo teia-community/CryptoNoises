@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policymap [
+<!ELEMENT policymap (policy)*>
+<!ATTLIST policymap xmlns CDATA #FIXED ''>
+<!ELEMENT policy EMPTY>
+<!ATTLIST policy xmlns CDATA #FIXED '' domain NMTOKEN #REQUIRED
+  name NMTOKEN #IMPLIED pattern CDATA #IMPLIED rights NMTOKEN #IMPLIED
+  stealth NMTOKEN #IMPLIED value CDATA #IMPLIED>
+]>
+<!--
+  Token media comes from IPFS and is untrusted, and the previews built from it are public.
+
+  MediaTool already forces the input coder from the detected mimetype, so a file cannot be read as SVG / MVG / MSL /
+  TEXT. This policy is the second line of defence: it denies every coder except the raster formats that are actually
+  converted, and denies the delegates that would let a crafted file read local files or reach internal services.
+-->
+<policymap>
+  <!-- Resource ceilings; MediaTool also passes -limit options per run -->
+  <policy domain="resource" name="memory" value="256MiB"/>
+  <policy domain="resource" name="map" value="512MiB"/>
+  <policy domain="resource" name="disk" value="1GiB"/>
+  <policy domain="resource" name="area" value="128MP"/>
+  <policy domain="resource" name="width" value="32KP"/>
+  <policy domain="resource" name="height" value="32KP"/>
+  <policy domain="resource" name="list-length" value="256"/>
+  <policy domain="resource" name="time" value="120"/>
+  <policy domain="resource" name="thread" value="2"/>
+
+  <!-- No external programs (ghostscript, ffmpeg-via-delegate, curl, ...) -->
+  <policy domain="delegate" rights="none" pattern="*"/>
+
+  <!-- Deny every coder, then allow only what MediaTool reads and writes -->
+  <policy domain="coder" rights="none" pattern="*"/>
+  <policy domain="coder" rights="read|write" pattern="{PNG,JPEG,JPG,GIF,BMP,BMP2,BMP3,TIFF,WEBP}"/>
+
+  <!-- Writing previews needs these internal coders -->
+  <policy domain="coder" rights="write" pattern="{MPEG,RGB,RGBA}"/>
+
+  <!-- Local files only: no http/https/ftp reads from inside a converted file -->
+  <policy domain="module" rights="none" pattern="{URL,HTTP,HTTPS,FTP,MSL,MVG,SVG,TEXT,LABEL,EPHEMERAL,PANGO,XPS,PS,PS2,PS3,PDF,EPS}"/>
+
+  <!-- Do not let a file override the policy or read indirect file lists ("@file") -->
+  <policy domain="path" rights="none" pattern="@*"/>
+  <policy domain="system" name="shred" value="0"/>
+</policymap>

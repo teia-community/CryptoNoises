@@ -1,0 +1,44 @@
+# CryptoNoises: the only work that genuinely needs a clock (service `scheduler`).
+#
+# Everything that used to run here every minute is a long-lived worker service now; see compose.yaml. What is left
+# is janitor work and periodic housekeeping, which is what a scheduler is actually for.
+#
+# Read by supercronic, so there is no user column (unlike /etc/cron.d) and output goes to the container log.
+# The commands run as www-data through cn-cron, which also restores the container environment.
+SHELL=/bin/bash
+
+#=======================================================================================================================
+# Indexer janitors
+#=======================================================================================================================
+# Returns tasks stuck in 'syncing' and sync blocks stuck in 'processing' back to 'idle'. This is what recovers a
+# worker that was killed mid-task, so it matters more now that workers are long-lived.
+*/1  *  *  *  *  /usr/local/bin/cn-cron /opt/cryptonoises/commands/run-tezos /jobs/recover-dead-jobs
+
+# Kills ImageMagick conversions that hang on broken media, and trims the IPFS file cache
+*/1  *  *  *  *  /usr/local/bin/cn-cron /opt/cryptonoises/commands/run-tezos /jobs/clean/media-convert-zombies
+*/1  *  *  *  *  /usr/local/bin/cn-cron /opt/cryptonoises/commands/run-tezos /jobs/clean/file-cache
+
+# Drops the raw log tables both the sync and the analyzer have passed
+0    *  *  *  *  /usr/local/bin/cn-cron /opt/cryptonoises/commands/run-tezos /blockchain/transaction/cleanup offset=50000
+0    *  *  *  *  /usr/local/bin/cn-cron /opt/cryptonoises/commands/run-tezos /blockchain/bigmap-updates/cleanup offset=50000
+
+#=======================================================================================================================
+# Bots janitors and housekeeping (harmless with the bots stopped: they find nothing to do)
+#=======================================================================================================================
+*/1  *  *  *  *  /usr/local/bin/cn-cron /opt/cryptonoises/commands/run /jobs/recover-dead-jobs
+*/1  *  *  *  *  /usr/local/bin/cn-cron /opt/cryptonoises/commands/run /lifecycle/check/error-logs
+*/1  *  *  *  *  /usr/local/bin/cn-cron /opt/cryptonoises/commands/run /lifecycle/clean-up/user-actions
+*/10 *  *  *  *  /usr/local/bin/cn-cron /opt/cryptonoises/commands/run /lifecycle/clean-up/events-flow
+*/30 *  *  *  *  /usr/local/bin/cn-cron /opt/cryptonoises/commands/run /lifecycle/clean-up/callback-actions
+
+# Keeps logs with personal data for 64 days
+1    0  *  *  *  /usr/local/bin/cn-cron /opt/cryptonoises/commands/run /lifecycle/clean-up/old-data
+
+# Creates next month's log tables
+30   23 *  *  *  /usr/local/bin/cn-cron /opt/cryptonoises/commands/run /lifecycle/prepare/tables
+
+# Tezos domains: finding new ones and the daily cleanup are periodic; the expiry queue itself is a worker service.
+# timeLimit is explicit here because /jobs/exec otherwise takes the worker lifetime (WORKER_TIME_LIMIT_SEC), which
+# is measured in hours for the worker services and would overrun these schedules.
+*/10 *  *  *  *  /usr/local/bin/cn-cron /opt/cryptonoises/commands/run /jobs/exec jobId=domains-expiry-find-new timeLimit=50
+0    12 *  *  *  /usr/local/bin/cn-cron /opt/cryptonoises/commands/run /jobs/exec jobId=domains-expiry-cleanup timeLimit=300

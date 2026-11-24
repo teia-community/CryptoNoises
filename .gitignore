@@ -2,6 +2,9 @@
 config/consts-secrets.php
 config/environment.php
 
+# docker-compose configuration (see .env.example)
+.env
+
 # Dependencies
 vendor/
 
