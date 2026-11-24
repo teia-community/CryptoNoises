@@ -30,6 +30,7 @@ class BigmapDataMarketOffers
             Setapp\ObjktCom_v2::Bigmap_Offers           => Setapp\ObjktCom_v2::MarketplaceKTID,
             Setapp\ObjktCom_v3a::Bigmap_Offers          => Setapp\ObjktCom_v3a::MarketplaceKTID,
             Setapp\ObjktCom_v3::Bigmap_Offers           => Setapp\ObjktCom_v3::MarketplaceKTID,
+            Setapp\ObjktCom_v4::Bigmap_Offers           => Setapp\ObjktCom_v4::MarketplaceKTID,
             Setapp\Versum::Bigmap_Offers                => Setapp\Versum::MarketplaceKTID,
         ];
 

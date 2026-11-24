@@ -17,6 +17,8 @@ class ObjktCom extends AbstractVendor
             case Setapp\ObjktCom_v1::DutchAuctionsKTID:     $version = 1; $bigmapId = Setapp\ObjktCom_v1::Bigmap_AuctionsDutch;   break;
             case Setapp\ObjktCom_v2::EnglishAuctionsKTID:   $version = 2; $bigmapId = Setapp\ObjktCom_v2::Bigmap_AuctionsEnglish; break;
             case Setapp\ObjktCom_v2::DutchAuctionsKTID:     $version = 2; $bigmapId = Setapp\ObjktCom_v2::Bigmap_AuctionsDutch;   break;
+            // v4 is objkt.com's "english auction v6.1": same value shape as v3, so it reads as version 3
+            case Setapp\ObjktCom_v4::EnglishAuctionsKTID:   $version = 3; $bigmapId = Setapp\ObjktCom_v4::Bigmap_AuctionsEnglish; break;
             case Setapp\ObjktCom_v3::EnglishAuctionsKTID:   $version = 3; $bigmapId = Setapp\ObjktCom_v3::Bigmap_AuctionsEnglish; break;
             case Setapp\ObjktCom_v3::DutchAuctionsKTID:     $version = 3; $bigmapId = Setapp\ObjktCom_v3::Bigmap_AuctionsDutch;   break;
             default: return null;

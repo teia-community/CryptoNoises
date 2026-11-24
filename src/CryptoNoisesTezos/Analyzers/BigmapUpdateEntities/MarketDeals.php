@@ -95,6 +95,11 @@ class MarketDeals extends AbstractEntity
             case Setapp\ObjktCom_v3::Bigmap_AuctionsEnglish:    return self::PackDealRecord_ObjktComV3_AuctionsEnglish($bigmap, $value);
             case Setapp\ObjktCom_v3::Bigmap_AuctionsDutch:      return self::PackDealRecord_ObjktComV3_AuctionsDutch($bigmap, $value);
 
+            // v4 is objkt.com's marketplace v6.2 / english v6.1: the values carry the same keys as v3's, plus
+            // nullable extras these packers do not read, so they go through the v3 packers unchanged.
+            case Setapp\ObjktCom_v4::Bigmap_Swaps:              return self::PackDealRecord_ObjktComV3_Swaps($bigmap, $value);
+            case Setapp\ObjktCom_v4::Bigmap_AuctionsEnglish:    return self::PackDealRecord_ObjktComV3_AuctionsEnglish($bigmap, $value);
+
             case Setapp\Teia::Bigmap_Swaps:                    return self::PackDealRecord_Teia_Swaps($bigmap, $value);
 
             case 196868:    return self::PackDealRecord_Typed_Swaps($bigmap, $value);                                   # KT1VoZeuBMJF6vxtLqEFMoc4no5VDG789D7z / swaps

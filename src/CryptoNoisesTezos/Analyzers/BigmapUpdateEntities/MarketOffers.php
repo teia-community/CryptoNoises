@@ -64,6 +64,7 @@ class MarketOffers extends AbstractEntity
             case Setapp\ObjktCom_v2::Bigmap_Offers:         return self::PackOfferRecord_ObjktComV2($bigmap, $value);
             case Setapp\ObjktCom_v3a::Bigmap_Offers:        return self::PackOfferRecord_ObjktComV3($bigmap, $value);
             case Setapp\ObjktCom_v3::Bigmap_Offers:         return self::PackOfferRecord_ObjktComV3($bigmap, $value);
+            case Setapp\ObjktCom_v4::Bigmap_Offers:         return self::PackOfferRecord_ObjktComV3($bigmap, $value);
             case Setapp\Versum::Bigmap_Offers:              return self::PackOfferRecord_Versum($bigmap, $value);
         }
 
