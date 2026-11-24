@@ -17,6 +17,11 @@ class Config
     /**
      * How long a looping command keeps working before it exits, in seconds.
      *
+     * The per-command kJOBS_TIMEOUT_* constants are the PHP execution ceiling (set_time_limit) and must stay
+     * ABOVE this: they are added to it, so each one is the slack one unit of work may take on top of the loop
+     * budget. Setting a ceiling below the loop budget kills the process mid-task and leaves the block it was
+     * working on in 'processing'.
+     *
      * Under cron this has to stay below the one-minute tick, which is what kJOBS_TIMEOUT_DEFAULT is for. Running
      * the same commands as long-lived worker services (see compose.yaml) means they should not exit every minute:
      * set worker.time_limit_sec (WORKER_TIME_LIMIT_SEC) to the lifetime you want, and let the restart policy

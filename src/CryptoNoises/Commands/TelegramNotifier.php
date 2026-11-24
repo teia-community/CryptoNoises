@@ -63,7 +63,7 @@ class TelegramNotifier extends AbstractCommand
     {
         $tsStart = Time::Microtime();
 
-        set_time_limit(Config::kJOBS_TIMEOUT_TELEGRAM_NOTIFIER);
+        set_time_limit(Config::runTimeLimit() + Config::kJOBS_TIMEOUT_TELEGRAM_NOTIFIER);
 
         if (!$this->checkLockAndWaitUntilNoOtherInstanceRuns($lockId, Config::kJOBS_TIMEOUT_DEFAULT))
             return;

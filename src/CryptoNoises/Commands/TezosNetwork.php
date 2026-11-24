@@ -18,7 +18,7 @@ class TezosNetwork extends AbstractCommand
 
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-        set_time_limit(Config::kJOBS_TIMEOUT_TEZOS_TRANSACTION_ANALYZE);
+        set_time_limit(Config::runTimeLimit() + Config::kJOBS_TIMEOUT_TEZOS_TRANSACTION_ANALYZE);
 
         if (!$this->checkLockAndWaitUntilNoOtherInstanceRuns('command-lock.tezos-network.analyze-new-transactions', Config::kJOBS_TIMEOUT_DEFAULT))
             return;
@@ -158,7 +158,7 @@ class TezosNetwork extends AbstractCommand
 
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-        set_time_limit(Config::kJOBS_TIMEOUT_TEZOS_TRANSACTION_ANALYZE);
+        set_time_limit(Config::runTimeLimit() + Config::kJOBS_TIMEOUT_TEZOS_TRANSACTION_ANALYZE);
 
         if (!$this->checkLockAndWaitUntilNoOtherInstanceRuns('command-lock.tezos-network.sync-wallets-states', Config::kJOBS_TIMEOUT_DEFAULT))
             return;

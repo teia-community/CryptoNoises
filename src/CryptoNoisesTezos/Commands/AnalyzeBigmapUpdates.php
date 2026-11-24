@@ -21,7 +21,7 @@ class AnalyzeBigmapUpdates extends AbstractCommand
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
         ini_set('memory_limit', '256M');
-        set_time_limit(Config::kJOBS_TIMEOUT_BIGMAP_UPDATE_ANALYZE);
+        set_time_limit(Config::runTimeLimit() + Config::kJOBS_TIMEOUT_BIGMAP_UPDATE_ANALYZE);
 
         if (!$this->checkLockAndWaitUntilNoOtherInstanceRuns('command-lock.analyze.bigmap-updates.new', Config::kJOBS_TIMEOUT_DEFAULT))
             return;

@@ -17,7 +17,7 @@ class BlockchainBigmapUpdates extends AbstractCommand
         $tsStart = Time::Microtime();
 
         ini_set('memory_limit', '512M');
-        set_time_limit(Config::kJOBS_TIMEOUT_BIGMAP_UPDATE_SYNC);
+        set_time_limit(Config::runTimeLimit() + Config::kJOBS_TIMEOUT_BIGMAP_UPDATE_SYNC);
 
         if (!$this->checkLockAndWaitUntilNoOtherInstanceRuns('command-lock.blockchain.bigmap-updates.sync-new', Config::kJOBS_TIMEOUT_DEFAULT))
             return;
@@ -70,7 +70,7 @@ class BlockchainBigmapUpdates extends AbstractCommand
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
         ini_set('memory_limit', '256M');
-        set_time_limit(Config::kJOBS_TIMEOUT_BIGMAP_UPDATE_SYNC);
+        set_time_limit(Config::runTimeLimit() + Config::kJOBS_TIMEOUT_BIGMAP_UPDATE_SYNC);
 
         if (!$this->checkLockAndWaitUntilNoOtherInstanceRuns('command-lock.blockchain.bigmap-updates.sync-check', Config::kJOBS_TIMEOUT_DEFAULT))
             return;

@@ -19,7 +19,7 @@ class AnalyzeTransactions extends AbstractCommand
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
         ini_set('memory_limit', '512M');
-        set_time_limit(Config::kJOBS_TIMEOUT_TRANSACTION_ANALYZE);
+        set_time_limit(Config::runTimeLimit() + Config::kJOBS_TIMEOUT_TRANSACTION_ANALYZE);
 
         if (!$this->checkLockAndWaitUntilNoOtherInstanceRuns('command-lock.analyze.transactions.new', Config::kJOBS_TIMEOUT_DEFAULT))
             return;
