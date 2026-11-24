@@ -402,6 +402,23 @@ How authorization works:
 Bots without a token are skipped. After changing the secret or the domain, run `/telegram/webhook/set` again.
 Check the current state with `commands/run /telegram/webhook/info`.
 
+### Without a public HTTPS endpoint: polling
+
+A test stand or a laptop cannot receive webhooks. For those, the main bot can fetch its updates itself:
+
+```bash
+docker compose --profile telegram-poll up -d bots-telegram-poll
+```
+
+`/telegram/poll` long-polls `getUpdates` and hands every update to the same code the webhook runs, so the bot
+behaves the same either way. Telegram serves a bot one way or the other, never both: while a webhook is set it
+refuses `getUpdates`, and the poller then logs that and idles rather than deleting the webhook - the token may be
+the one a live deployment uses. Give a test stand its own bot.
+
+The offset is stored before each update is handled, so an update that crashes the process is skipped on restart
+instead of being fetched again and again - at most once. (A webhook request that fails is retried by Telegram for a
+while; for a poller, a retry that crashes the same way is a restart loop.)
+
 ## Discord bot
 
 The Discord bot runs as three long-running PHP processes:

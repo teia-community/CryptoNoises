@@ -19,11 +19,21 @@ class TelegramBotController
         if (!TelegramWebhookAuth::Authorize())
             return;
 
+        self::HandleUpdate();
+    }
+
+    /**
+     * Routes one Telegram update to the bot. Shared by the webhook (the request body, $rawUpdate = null) and by
+     * the polling command, which fetches updates with getUpdates where no public HTTPS endpoint exists.
+     * The caller has already called Config::initializeByPlatform() and checked authorization where there is any.
+     */
+    public static function HandleUpdate(?string $rawUpdate = null): void
+    {
         try
         {
             $tgBotConnection = new TelegramBotConnection();
 
-            if ($tgBotConnection->webhook->init() == false)
+            if ($tgBotConnection->webhook->init($rawUpdate) == false)
                 throw new Exception("Failed to parse the webhook request");
 
             if (!isset($tgBotConnection->user))
@@ -67,9 +77,9 @@ class TelegramBotController
         {
             $errorData = [];
             $errorData['channel_id']   = TelegramBotConnection::UnpackBotId(TELEGRAM_BOT_API);
-            $errorData['data_request'] = file_get_contents("php://input");
+            $errorData['data_request'] = $rawUpdate ?? file_get_contents("php://input");
 
-            Log::Fatal(get_class($this), __FUNCTION__, $e->getMessage(), $errorData);
+            Log::Fatal(self::class, __FUNCTION__, $e->getMessage(), $errorData);
         }
     }
 }

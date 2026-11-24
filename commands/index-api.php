@@ -47,6 +47,8 @@ $f3->route('GET /telegram/notifier/inform-flow',                'CryptoNoises\Co
 $f3->route('GET /telegram/webhook/set',                        'CryptoNoises\Commands\TelegramWebhook->set');
 $f3->route('GET /telegram/webhook/info',                       'CryptoNoises\Commands\TelegramWebhook->info');
 
+$f3->route('GET /telegram/poll',                               'CryptoNoises\Commands\TelegramPoll->poll');
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Discord
 
