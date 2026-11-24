@@ -15,6 +15,37 @@ class Vss
         Vss::f3()->set('ONERROR', function (Base $f3)
         {
         });
+
+        self::KeepDeprecationsNonFatal();
+    }
+
+    /**
+     * Fat-Free's error handler, installed by Base::instance(), turns every reported diagnostic into error 500, which
+     * ends the process. That is wanted for warnings: on PHP 8 a missing array key is one, and those were real bugs.
+     * It is wrong for deprecations, which only announce a future PHP version and which vendor code raises without
+     * us being able to fix it.
+     *
+     * The case that forced this: TuriBot 2.16, its latest release, declares getUpdate(string $body = null), and
+     * PHP 8.4 deprecates that implicit nullable at compile time. Every CLI process that loaded the Telegram client
+     * died there - both notifiers on their first message, /telegram/webhook/set, /telegram/webhook/info. The CLI
+     * compiles each file afresh; in FPM, opcache hid it after the first request.
+     *
+     * Deprecations go to the error log and are otherwise ignored. Everything else still reaches Fat-Free.
+     */
+    private static function KeepDeprecationsNonFatal(): void
+    {
+        $previous = null;
+
+        $previous = set_error_handler(function (int $level, string $text, string $file = '', int $line = 0) use (&$previous)
+        {
+            if (($level & (E_DEPRECATED | E_USER_DEPRECATED)) && ($level & error_reporting()))
+            {
+                error_log("Deprecated (not fatal): $text in $file:$line");
+                return true;
+            }
+
+            return $previous !== null ? $previous($level, $text, $file, $line) : false;
+        });
     }
 
     public static function f3(): Base
