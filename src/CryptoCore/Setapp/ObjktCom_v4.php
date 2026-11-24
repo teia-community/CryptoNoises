@@ -31,4 +31,9 @@ class ObjktCom_v4
     public const Bigmap_Swaps                       = 684371;       # KT1SwbTqhSKF6Pdokiu1K4Fpi17ahPPzmt1X / asks
     public const Bigmap_AuctionsEnglish             = 684374;       # KT1HFYHtPL2z6jWn6r7SQNSAx2rKRDuntuuG / auctions
     public const Bigmap_Offers                      = 684373;       # KT1SwbTqhSKF6Pdokiu1K4Fpi17ahPPzmt1X / offers
+
+    // objkt.com's "project offers v1", live since 2026-07: offers made on a whole collection rather than one
+    // token, on their own contract. An offer names its collection by (fa_contract, collection_id).
+    public const ProjectOffersKTID                  = 'KT19NMJYBC4AiprtetMW1K2damXgGRCbJWD5';
+    public const Bigmap_CollectionOffers            = 816255;       # KT19NMJYBC4AiprtetMW1K2damXgGRCbJWD5 / collection_offers
 }
