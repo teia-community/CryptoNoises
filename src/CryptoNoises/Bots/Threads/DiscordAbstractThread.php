@@ -45,6 +45,12 @@ abstract class DiscordAbstractThread
                 'token'   => $this->discordToken,
                 'logger'  => $logger,
                 'intents' => $this->intents(),
+
+                // None of these threads ever joins a voice channel. Without this, DiscordPHP sets up its voice
+                // client on every start and logs an ERROR, because Discord has required its DAVE end-to-end
+                // encryption for voice since March 2026 and that needs libdave through ext-ffi. An ERROR on every
+                // boot for a feature the bot does not have is noise that hides the ones that matter.
+                'disableVoiceClient' => true,
             ]);
             return true;
         }
