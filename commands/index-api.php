@@ -1,11 +1,15 @@
 <?php
 
+use CryptoCore\Process\Shutdown;
 use CryptoCore\Vss\Vss;
 
 require_once(dirname(__FILE__) . '/../vendor/autoload.php');
 
 VssCfg::cfg()->initialize();
 Vss::initialize();
+
+// Installed before any command runs: the loops that can stop cleanly poll Shutdown::Requested()
+Shutdown::Install();
 
 $f3 = Vss::f3();
 
@@ -42,6 +46,8 @@ $f3->route('GET /telegram/notifier/inform-flow',                'CryptoNoises\Co
 
 $f3->route('GET /telegram/webhook/set',                        'CryptoNoises\Commands\TelegramWebhook->set');
 $f3->route('GET /telegram/webhook/info',                       'CryptoNoises\Commands\TelegramWebhook->info');
+
+$f3->route('GET /telegram/poll',                               'CryptoNoises\Commands\TelegramPoll->poll');
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Discord

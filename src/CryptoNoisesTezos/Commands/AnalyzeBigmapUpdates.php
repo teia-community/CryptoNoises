@@ -5,6 +5,8 @@ namespace CryptoNoisesTezos\Commands;
 use CryptoNoisesTezos\Analyzers;
 use CryptoNoisesTezos\Config;
 use CryptoNoisesTezos\Models;
+use CryptoCore\Process\ProgressLog;
+use CryptoCore\Process\Shutdown;
 use CryptoCore\Time;
 use CryptoCore\Vss\Vss;
 use Exception;
@@ -32,12 +34,13 @@ class AnalyzeBigmapUpdates extends AbstractCommand
 
         $limit = $this->getCmdVar('limit', 1000);
         $levelsSinceReconnect = 0;
+        $progress = new ProgressLog('analyze bigmap updates');
 
         try
         {
             while($limit-- > 0)
             {
-                if (Time::Microtime() - $tsStart > Config::runTimeLimit())
+                if (Time::Microtime() - $tsStart > Config::runTimeLimit() || Shutdown::Requested())
                     break;
 
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -62,6 +65,9 @@ class AnalyzeBigmapUpdates extends AbstractCommand
 
                 if ($lastSyncedLevelIndex === null)
                     throw new Exception("Cannot detect last synced job");
+
+                // $level is the next one to analyze, so everything before it is done
+                $progress->report($level - 1, $lastSyncedLevelIndex, 'synced');
 
                 if ($level > $lastSyncedLevelIndex)
                 {

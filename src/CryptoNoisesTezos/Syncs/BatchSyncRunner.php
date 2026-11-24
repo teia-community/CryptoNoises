@@ -5,6 +5,8 @@ namespace CryptoNoisesTezos\Syncs;
 use CryptoNoisesTezos\Config;
 use CryptoNoisesTezos\Models\FixerAbstract;
 use CryptoNoisesTezos\Vendors;
+use CryptoCore\Process\ProgressLog;
+use CryptoCore\Process\Shutdown;
 use CryptoCore\Time;
 use CryptoCore\Vss\Vss;
 use Exception;
@@ -30,11 +32,14 @@ final class BatchSyncRunner
     private int $span = self::kSPAN_START;
     private ?int $lastLevelInBlockchain = null;
 
+    private ProgressLog $progress;
+
     public function __construct(FixerAbstract $fixer, LevelSyncInterface $sync, callable $log)
     {
         $this->fixer    = $fixer;
         $this->sync     = $sync;
         $this->log      = $log;
+        $this->progress = new ProgressLog('sync '.$sync->tzktRangePath());
     }
 
     /**
@@ -45,6 +50,12 @@ final class BatchSyncRunner
     {
         while ($levelsLimit > 0 && Time::Microtime() - $tsStart <= Config::runTimeLimit())
         {
+            if (Shutdown::Requested())
+            {
+                ($this->log)('Stopping on '.Shutdown::SignalName().'.');
+                return;
+            }
+
             Vss::dbCloseAll();
 
             $level = $this->getNextLevel();
@@ -59,6 +70,8 @@ final class BatchSyncRunner
 
             if ($levelTo === null)
             {
+                // Caught up with the head: keeps the heartbeat going while there is nothing to sync
+                $this->progress->report($level - 1, $this->lastLevelInBlockchain);
                 sleep(1);
                 continue;
             }
@@ -72,7 +85,11 @@ final class BatchSyncRunner
 
             $this->adaptSpan($level, $levelTo, $range);
 
-            $levelsLimit -= $this->syncRange($level, $range, $levelsLimit, $tsStart);
+            $synced = $this->syncRange($level, $range, $levelsLimit, $tsStart);
+            $levelsLimit -= $synced;
+
+            if ($synced > 0)
+                $this->progress->report($level + $synced - 1, $this->lastLevelInBlockchain);
         }
     }
 
@@ -103,7 +120,9 @@ final class BatchSyncRunner
 
         for ($level = $levelFrom; $level <= $range->levelTo && $synced < $levelsLimit; $level++, $synced++)
         {
-            if (Time::Microtime() - $tsStart > Config::runTimeLimit())
+            // Both stop conditions leave the loop, never the batch: the pending levels are committed by the
+            // $flushBatch() below, so a stop costs nothing and the fixer cursor stays in level order
+            if (Time::Microtime() - $tsStart > Config::runTimeLimit() || Shutdown::Requested())
                 break;
 
             if (!isset($range->itemsByLevel[$level]))

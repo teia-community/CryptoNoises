@@ -6,6 +6,7 @@ use CryptoNoisesTezos\Analyzers;
 use CryptoNoisesTezos\Config;
 use CryptoNoisesTezos\Models;
 use CryptoNoisesTezos\Syncs;
+use CryptoCore\Process\Shutdown;
 use CryptoCore\Time;
 use CryptoCore\Vss\Vss;
 use Exception;
@@ -97,7 +98,7 @@ class BlockchainBigmapUpdates extends AbstractCommand
             {
                 Vss::dbCloseAll();
 
-                if (Time::Microtime() - $tsStart > Config::runTimeLimit())
+                if (Time::Microtime() - $tsStart > Config::runTimeLimit() || Shutdown::Requested())
                     break;
 
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

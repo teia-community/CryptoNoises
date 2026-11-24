@@ -280,6 +280,14 @@ services:
     command: ["/opt/cryptonoises/commands/run", "/telegram/notifier/inform-flow"]
     profiles: ["bots"]
 
+  # Telegram updates by polling (getUpdates) instead of the webhook, for a stand Telegram cannot reach over
+  # public HTTPS. Its own profile, not "bots": with a webhook set it would only sit idle.
+  #   docker compose --profile telegram-poll up -d bots-telegram-poll
+  bots-telegram-poll:
+    <<: *worker
+    command: ["/opt/cryptonoises/commands/run", "/telegram/poll"]
+    profiles: ["telegram-poll"]
+
   worker-domains-expiry:
     <<: *worker
     command: ["/opt/cryptonoises/commands/run", "/jobs/exec", "jobId=domains-expiry"]

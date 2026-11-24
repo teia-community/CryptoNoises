@@ -3,6 +3,7 @@
 namespace CryptoCore\Vss;
 
 use CryptoCore\Process\ProcessList;
+use CryptoCore\Process\Shutdown;
 use CryptoCore\Time;
 
 class VssCommand
@@ -27,6 +28,9 @@ class VssCommand
         while (true)
         {
             if (Time::Microtime() - $tsStart >= ($waitTimeout - 1))       // -1 sec leaves time to finish before set_time_limit() kills the process
+                return false;
+
+            if (Shutdown::Requested())
                 return false;
 
             $activeThreadsCount = $this->getSelfTaskActiveThreadsCount();

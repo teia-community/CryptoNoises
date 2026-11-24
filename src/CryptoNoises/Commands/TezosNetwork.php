@@ -6,6 +6,8 @@ use CryptoNoises\Config;
 use CryptoNoises\Entities\Wallet;
 use CryptoNoises\Models;
 use CryptoNoises\Networks\Tezos\TezosNetworkParser;
+use CryptoCore\Process\ProgressLog;
+use CryptoCore\Process\Shutdown;
 use CryptoCore\Time;
 use CryptoCore\Vss\Vss;
 use Exception;
@@ -28,12 +30,13 @@ class TezosNetwork extends AbstractCommand
         try
         {
             $lastSyncedLevel = \CryptoNoises\GatewayTezos\Gateway::GetLastFullySyncedBlock();
+            $progress = new ProgressLog('analyze for notifications');
 
             while (true)
             {
                 Vss::dbCloseAll();
 
-                if (Time::Microtime() - $tsStart > Config::runTimeLimit())
+                if (Time::Microtime() - $tsStart > Config::runTimeLimit() || Shutdown::Requested())
                     break;
 
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -48,6 +51,10 @@ class TezosNetwork extends AbstractCommand
                 }
 
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+                // $level is the next one to analyze, so everything before it is done. $lastSyncedLevel is only
+                // re-read once the loop catches up with it, so the target is read fresh, and only when printing.
+                $progress->report($level - 1, fn () => \CryptoNoises\GatewayTezos\Gateway::GetLastFullySyncedBlock(), 'synced');
 
                 if ($level > $lastSyncedLevel)
                 {
@@ -169,7 +176,7 @@ class TezosNetwork extends AbstractCommand
         {
             Vss::dbCloseAll();
 
-            if (Time::Microtime() - $tsStart > Config::runTimeLimit())
+            if (Time::Microtime() - $tsStart > Config::runTimeLimit() || Shutdown::Requested())
                 break;
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

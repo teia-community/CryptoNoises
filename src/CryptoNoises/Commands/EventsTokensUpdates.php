@@ -9,6 +9,7 @@ use CryptoNoises\Enum;
 use CryptoNoises\Networks\Tezos\Hunters;
 use CryptoNoises\Networks\Tezos\TezosHelper;
 use CryptoNoises\Networks\Tezos\TezosNetworkParser;
+use CryptoCore\Process\Shutdown;
 use CryptoCore\Time;
 use CryptoCore\Vss\Vss;
 
@@ -34,7 +35,7 @@ class EventsTokensUpdates extends AbstractCommand
 
         while (true)
         {
-            if (Time::Microtime() - $tsStart > Config::runTimeLimit())
+            if (Time::Microtime() - $tsStart > Config::runTimeLimit() || Shutdown::Requested())
                 break;
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

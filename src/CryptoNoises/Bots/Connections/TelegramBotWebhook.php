@@ -39,9 +39,14 @@ class TelegramBotWebhook
         $this->core = $core;
     }
 
-    public function init(): bool
+    /**
+     * @param string|null $rawData one update as JSON; null = the body of the current webhook request. The
+     *                             polling command (/telegram/poll) passes the updates it fetched with getUpdates.
+     */
+    public function init(?string $rawData = null): bool
     {
-        $rawData = file_get_contents("php://input");
+        if ($rawData === null)
+            $rawData = file_get_contents("php://input");
 
         $this->webhookData = json_decode($rawData);
 
