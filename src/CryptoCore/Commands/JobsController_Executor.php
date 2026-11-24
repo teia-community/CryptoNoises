@@ -3,6 +3,7 @@
 namespace CryptoCore\Commands;
 
 use CryptoCore\Enum\JobResult;
+use CryptoCore\Process\Shutdown;
 use CryptoCore\Time;
 use CryptoCore\Vss\Vss;
 use VssCfg;
@@ -43,7 +44,8 @@ trait JobsController_Executor
         {
             Vss::dbCloseAll();
 
-            if (Time::Microtime() - $tsStart > $timeLimit)
+            // Between tasks only: a claimed task is always finished and closed, never abandoned in 'syncing'
+            if (Time::Microtime() - $tsStart > $timeLimit || Shutdown::Requested())
                 break;
 
             if (Time::Microtime() - $tsLockChecked >= self::kLOCK_RECHECK_INTERVAL_SEC)

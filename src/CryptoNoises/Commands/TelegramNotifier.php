@@ -8,6 +8,7 @@ use CryptoNoises\Bots\Gates\TelegramBotGate;
 use CryptoNoises\Config;
 use CryptoNoises\Core\Debugger;
 use CryptoNoises\Models;
+use CryptoCore\Process\Shutdown;
 use CryptoCore\Time;
 use Exception;
 
@@ -72,7 +73,7 @@ class TelegramNotifier extends AbstractCommand
 
         $iteration = 0;
 
-        while (Time::Microtime() - $tsStart <= Config::runTimeLimit())
+        while (Time::Microtime() - $tsStart <= Config::runTimeLimit() && !Shutdown::Requested())
         {
             $this->logMsg("Iteration ".(++$iteration));
 

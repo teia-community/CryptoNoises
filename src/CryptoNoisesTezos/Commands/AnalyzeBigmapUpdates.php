@@ -5,6 +5,7 @@ namespace CryptoNoisesTezos\Commands;
 use CryptoNoisesTezos\Analyzers;
 use CryptoNoisesTezos\Config;
 use CryptoNoisesTezos\Models;
+use CryptoCore\Process\Shutdown;
 use CryptoCore\Time;
 use CryptoCore\Vss\Vss;
 use Exception;
@@ -37,7 +38,7 @@ class AnalyzeBigmapUpdates extends AbstractCommand
         {
             while($limit-- > 0)
             {
-                if (Time::Microtime() - $tsStart > Config::runTimeLimit())
+                if (Time::Microtime() - $tsStart > Config::runTimeLimit() || Shutdown::Requested())
                     break;
 
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

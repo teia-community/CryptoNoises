@@ -33,6 +33,11 @@ class CoinGecko extends AbstractCommand
         // is a loop asking CoinGecko for the same handful of coins as fast as it can answer.
         while (true)
         {
+            // Checked before the pass as well as after it: a stop signal cuts the sleep below short, and without
+            // this the loop would go straight into another full round of CoinGecko requests before noticing
+            if (Shutdown::Requested())
+                break;
+
             $this->syncOnce();
 
             if (Time::Microtime() - $tsStart > Config::runTimeLimit() || Shutdown::Requested())
@@ -51,6 +56,11 @@ class CoinGecko extends AbstractCommand
 
         foreach ($coins as $coinItem)
         {
+            // Between coins, not inside a request: curl cannot be interrupted mid-transfer, so a stop waits for
+            // the request in flight (normally well under a second) and the coins after it are left for next time
+            if (Shutdown::Requested())
+                return;
+
             $this->logMsg("Sync: {$coinItem['currency_in_id']} / {$coinItem['coin_gecko_id']}");
 
             $data = Networks\Globals\CoinGecko::GetCoinDetails($coinItem['coin_gecko_id']);

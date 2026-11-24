@@ -81,7 +81,9 @@ class AbstractVendor
             if ($result->isSuccess())
                 return $result;
 
-            if ($iteration == $maxIterations)
+            // On a stop, hand back the failure rather than sleeping and retrying through an outage: callers
+            // already treat a failed SyncResult as an ordinary failure
+            if ($iteration == $maxIterations || \CryptoCore\Process\Shutdown::Requested())
                 break;
 
             $iteration++;
