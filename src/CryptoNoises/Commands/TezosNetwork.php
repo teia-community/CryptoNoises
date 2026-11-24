@@ -6,6 +6,7 @@ use CryptoNoises\Config;
 use CryptoNoises\Entities\Wallet;
 use CryptoNoises\Models;
 use CryptoNoises\Networks\Tezos\TezosNetworkParser;
+use CryptoCore\Process\ProgressLog;
 use CryptoCore\Process\Shutdown;
 use CryptoCore\Time;
 use CryptoCore\Vss\Vss;
@@ -29,6 +30,7 @@ class TezosNetwork extends AbstractCommand
         try
         {
             $lastSyncedLevel = \CryptoNoises\GatewayTezos\Gateway::GetLastFullySyncedBlock();
+            $progress = new ProgressLog('analyze for notifications');
 
             while (true)
             {
@@ -49,6 +51,10 @@ class TezosNetwork extends AbstractCommand
                 }
 
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+                // $level is the next one to analyze, so everything before it is done. $lastSyncedLevel is only
+                // re-read once the loop catches up with it, so the target is read fresh, and only when printing.
+                $progress->report($level - 1, fn () => \CryptoNoises\GatewayTezos\Gateway::GetLastFullySyncedBlock(), 'synced');
 
                 if ($level > $lastSyncedLevel)
                 {

@@ -5,6 +5,7 @@ namespace CryptoNoisesTezos\Syncs;
 use CryptoNoisesTezos\Config;
 use CryptoNoisesTezos\Models\FixerAbstract;
 use CryptoNoisesTezos\Vendors;
+use CryptoCore\Process\ProgressLog;
 use CryptoCore\Process\Shutdown;
 use CryptoCore\Time;
 use CryptoCore\Vss\Vss;
@@ -31,11 +32,14 @@ final class BatchSyncRunner
     private int $span = self::kSPAN_START;
     private ?int $lastLevelInBlockchain = null;
 
+    private ProgressLog $progress;
+
     public function __construct(FixerAbstract $fixer, LevelSyncInterface $sync, callable $log)
     {
         $this->fixer    = $fixer;
         $this->sync     = $sync;
         $this->log      = $log;
+        $this->progress = new ProgressLog('sync '.$sync->tzktRangePath());
     }
 
     /**
@@ -66,6 +70,8 @@ final class BatchSyncRunner
 
             if ($levelTo === null)
             {
+                // Caught up with the head: keeps the heartbeat going while there is nothing to sync
+                $this->progress->report($level - 1, $this->lastLevelInBlockchain);
                 sleep(1);
                 continue;
             }
@@ -79,7 +85,11 @@ final class BatchSyncRunner
 
             $this->adaptSpan($level, $levelTo, $range);
 
-            $levelsLimit -= $this->syncRange($level, $range, $levelsLimit, $tsStart);
+            $synced = $this->syncRange($level, $range, $levelsLimit, $tsStart);
+            $levelsLimit -= $synced;
+
+            if ($synced > 0)
+                $this->progress->report($level + $synced - 1, $this->lastLevelInBlockchain);
         }
     }
 

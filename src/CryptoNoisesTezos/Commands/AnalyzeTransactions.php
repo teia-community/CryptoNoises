@@ -5,6 +5,7 @@ namespace CryptoNoisesTezos\Commands;
 use CryptoNoisesTezos\Analyzers;
 use CryptoNoisesTezos\Config;
 use CryptoNoisesTezos\Models;
+use CryptoCore\Process\ProgressLog;
 use CryptoCore\Process\Shutdown;
 use CryptoCore\Time;
 use CryptoCore\Vss\Vss;
@@ -28,6 +29,7 @@ class AnalyzeTransactions extends AbstractCommand
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
         $levelsSinceReconnect = 0;
+        $progress = new ProgressLog('analyze transactions');
 
         while (true)
         {
@@ -43,6 +45,9 @@ class AnalyzeTransactions extends AbstractCommand
                 sleep(1);
                 continue;
             }
+
+            // Every path below starts here, so one call covers analyzing, skipping empty levels and idling
+            $progress->report($lastSyncedLevel, $lastFullySyncedLevel, 'synced');
 
             if ($lastSyncedLevel >= $lastFullySyncedLevel)
             {

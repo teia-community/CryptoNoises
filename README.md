@@ -461,6 +461,16 @@ back. It is a **process lifetime, not a task deadline** - a worker always finish
 hourly is cheap insurance against a slow leak in a long-lived PHP process; set it higher if you trust it, or back to
 `55` to get the old cron-like behaviour.
 
+Workers print nothing per level, but the two syncs and the three analyzers print one progress line a minute, so
+`docker compose logs -f stage-sync-transactions` shows how a catch-up is going without querying the fixer tables:
+
+```
+21:58:04 sync operations/transactions: level 1,376,918 · +9,214 in 60s (154/s) · head 15,958,567, 14,581,649 behind, ETA 1d2h
+```
+
+Once caught up they drop to a line every ten minutes, as a heartbeat. `PROGRESS_LOG_INTERVAL_SEC` changes the
+interval; `0` turns the lines off.
+
 ### Why the workers can be scaled now
 
 `getNextTask()` used to be a plain `SELECT`, with a *separate* `UPDATE` marking the task `syncing`. That is a
