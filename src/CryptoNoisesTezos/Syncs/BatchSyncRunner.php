@@ -5,6 +5,7 @@ namespace CryptoNoisesTezos\Syncs;
 use CryptoNoisesTezos\Config;
 use CryptoNoisesTezos\Models\FixerAbstract;
 use CryptoNoisesTezos\Vendors;
+use CryptoCore\Process\Shutdown;
 use CryptoCore\Time;
 use CryptoCore\Vss\Vss;
 use Exception;
@@ -45,6 +46,12 @@ final class BatchSyncRunner
     {
         while ($levelsLimit > 0 && Time::Microtime() - $tsStart <= Config::runTimeLimit())
         {
+            if (Shutdown::Requested())
+            {
+                ($this->log)('Stopping on '.Shutdown::SignalName().'.');
+                return;
+            }
+
             Vss::dbCloseAll();
 
             $level = $this->getNextLevel();
@@ -103,7 +110,9 @@ final class BatchSyncRunner
 
         for ($level = $levelFrom; $level <= $range->levelTo && $synced < $levelsLimit; $level++, $synced++)
         {
-            if (Time::Microtime() - $tsStart > Config::runTimeLimit())
+            // Both stop conditions leave the loop, never the batch: the pending levels are committed by the
+            // $flushBatch() below, so a stop costs nothing and the fixer cursor stays in level order
+            if (Time::Microtime() - $tsStart > Config::runTimeLimit() || Shutdown::Requested())
                 break;
 
             if (!isset($range->itemsByLevel[$level]))

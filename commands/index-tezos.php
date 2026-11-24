@@ -1,11 +1,15 @@
 <?php
 
+use CryptoCore\Process\Shutdown;
 use CryptoCore\Vss\Vss;
 
 require_once(dirname(__FILE__) . '/../vendor/autoload.php');
 
 VssCfg::cfg()->initialize();
 Vss::initialize();
+
+// Installed before any command runs: the loops that can stop cleanly poll Shutdown::Requested()
+Shutdown::Install();
 
 $f3 = Vss::f3();
 

@@ -3,6 +3,7 @@
 namespace CryptoNoisesTezos\Syncs;
 
 use CryptoNoisesTezos\Models\FixerAbstract;
+use CryptoCore\Process\Shutdown;
 use CryptoCore\Vss\Vss;
 use Exception;
 
@@ -46,6 +47,12 @@ class RangeSyncRunner
     {
         for ($level = $levelMin; $level <= $levelMax; $level++)
         {
+            if (Shutdown::Requested())
+            {
+                ($this->log)('Stopping on '.Shutdown::SignalName()." at #$level.");
+                return;
+            }
+
             Vss::dbCloseAll();
 
             if (!$this->isToSync($level))

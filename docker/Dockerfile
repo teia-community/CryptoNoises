@@ -32,6 +32,10 @@ ENV DEBIAN_FRONTEND=noninteractive
 # - procps               : `ps`, used to prevent parallel runs of the same command and to kill hung conversions
 # - mariadb-client       : db-init.sh and sql/data/load.sh (provides both `mariadb` and `mysql`)
 # - libzip/libpng/...    : build deps of the gd extension
+#
+# pcntl is what lets the long-running commands notice their stop signal (SIGQUIT from `docker stop`, inherited
+# from the php-fpm base image): they run as PID 1, and PID 1 is only sent a signal it has installed a handler for
+# (see CryptoCore\Process\Shutdown).
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         imagemagick \
@@ -44,7 +48,7 @@ RUN apt-get update \
         libfreetype6-dev \
         libwebp-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
-    && docker-php-ext-install -j"$(nproc)" gd pdo_mysql \
+    && docker-php-ext-install -j"$(nproc)" gd pdo_mysql pcntl \
     && apt-get purge -y libpng-dev libjpeg62-turbo-dev libfreetype6-dev libwebp-dev \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*

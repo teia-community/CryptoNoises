@@ -10,6 +10,7 @@ use CryptoNoises\Enum;
 use CryptoNoises\GatewayTezos;
 use CryptoNoises\Networks\Tezos\Hunters;
 use CryptoNoises\Networks\Tezos\TezosNetworkParser;
+use CryptoCore\Process\Shutdown;
 use CryptoCore\Time;
 use CryptoCore\Vss\Vss;
 class EventsTokensMint extends AbstractCommand
@@ -34,7 +35,7 @@ class EventsTokensMint extends AbstractCommand
 
         while (true)
         {
-            if (Time::Microtime() - $tsStart > Config::runTimeLimit())
+            if (Time::Microtime() - $tsStart > Config::runTimeLimit() || Shutdown::Requested())
                 break;
 
             $this->logMsg("Sync new TOKENS mint");

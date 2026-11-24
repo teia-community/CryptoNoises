@@ -4,6 +4,7 @@ namespace CryptoNoises\Commands;
 
 use CryptoNoises\Config;
 use CryptoNoises\Core\Log;
+use CryptoCore\Process\Shutdown;
 use CryptoCore\Time;
 use CryptoNoises\Models;
 use CryptoNoises\Networks;
@@ -34,7 +35,7 @@ class CoinGecko extends AbstractCommand
         {
             $this->syncOnce();
 
-            if (Time::Microtime() - $tsStart > Config::runTimeLimit())
+            if (Time::Microtime() - $tsStart > Config::runTimeLimit() || Shutdown::Requested())
                 break;
 
             $this->logMsg("Sleep for ".self::kPASS_INTERVAL_SEC." sec");

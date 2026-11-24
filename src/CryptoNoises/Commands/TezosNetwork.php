@@ -6,6 +6,7 @@ use CryptoNoises\Config;
 use CryptoNoises\Entities\Wallet;
 use CryptoNoises\Models;
 use CryptoNoises\Networks\Tezos\TezosNetworkParser;
+use CryptoCore\Process\Shutdown;
 use CryptoCore\Time;
 use CryptoCore\Vss\Vss;
 use Exception;
@@ -33,7 +34,7 @@ class TezosNetwork extends AbstractCommand
             {
                 Vss::dbCloseAll();
 
-                if (Time::Microtime() - $tsStart > Config::runTimeLimit())
+                if (Time::Microtime() - $tsStart > Config::runTimeLimit() || Shutdown::Requested())
                     break;
 
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -169,7 +170,7 @@ class TezosNetwork extends AbstractCommand
         {
             Vss::dbCloseAll();
 
-            if (Time::Microtime() - $tsStart > Config::runTimeLimit())
+            if (Time::Microtime() - $tsStart > Config::runTimeLimit() || Shutdown::Requested())
                 break;
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

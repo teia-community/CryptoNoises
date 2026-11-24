@@ -5,6 +5,7 @@ namespace CryptoNoisesTezos\Commands;
 use CryptoNoisesTezos\Analyzers;
 use CryptoNoisesTezos\Config;
 use CryptoNoisesTezos\Models;
+use CryptoCore\Process\Shutdown;
 use CryptoCore\Time;
 use CryptoCore\Vss\Vss;
 
@@ -30,7 +31,7 @@ class AnalyzeTransactions extends AbstractCommand
 
         while (true)
         {
-            if (Time::Microtime() - $tsStart > Config::runTimeLimit())
+            if (Time::Microtime() - $tsStart > Config::runTimeLimit() || Shutdown::Requested())
                 break;
 
             $lastSyncedLevel = (int) Models\Config::model()->getValue('TezosAnalyzer.LastSyncedLevel');
