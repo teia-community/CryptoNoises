@@ -79,7 +79,11 @@ class BlockchainBigmapUpdates extends AbstractCommand
 
         $threadId   = (int)$this->getCmdVar('thread-id', 0);
         $offset     = (int)$this->getCmdVar('offset', 0);
-        $limit      = $this->getCmdVar('limit', 1000);
+        // This runs as a long-lived service (the stage-sync-check-* containers), not as a cron job, so the run
+        // has to be bounded by runTimeLimit() like sync-new above - not by a job count. With a 1000-iteration
+        // budget the container exits 0 within a minute and the restart policy spins it straight back up; the
+        // idle path sleeps and continues, so it spent the budget even with nothing to check.
+        $limit      = $this->getCmdVar('limit', 1000000);
 
         try
         {
