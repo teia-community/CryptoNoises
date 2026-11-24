@@ -81,6 +81,58 @@ class Transactions extends VssModel
         return (int) Vss::dbTezosLog()->insert($this->tableName($level), $item, 'IGNORE');
     }
 
+    /**
+     * Inserts the rows of several levels with one statement per log table (a level range can straddle a table
+     * boundary, so the rows are grouped by the table their level belongs to).
+     *
+     * @param array[] $rows rows as insert() takes them, each carrying its own 'level'
+     */
+    public function insertMany(array $rows): void
+    {
+        if (empty($rows))
+            return;
+
+        $byTable = [];
+
+        foreach ($rows as $row)
+            $byTable[$this->tableName((int) $row['level'])][] = $row;
+
+        foreach ($byTable as $tableName => $tableRows)
+            Vss::dbTezosLog()->insertMany($tableName, $tableRows, 'IGNORE');
+    }
+
+    /**
+     * Rows stored per level for the given levels: the batch equivalent of getItemsCountInBlock(), so the in/out
+     * check costs one query per log table instead of one per level.
+     *
+     * @param int[] $levels
+     * @return array<int, int> level => count, levels with no rows included as 0
+     */
+    public function getItemsCountInBlocks(array $levels): array
+    {
+        $result = array_fill_keys(array_map('intval', $levels), 0);
+
+        $byTable = [];
+
+        foreach ($levels as $level)
+            $byTable[$this->tableName((int) $level)][] = (int) $level;
+
+        foreach ($byTable as $tableName => $tableLevels)
+        {
+            $rows = Vss::dbTezosLog()->query("
+                SELECT level, COUNT(*) AS items_count
+                FROM $tableName
+                WHERE level IN (".join(',', $tableLevels).")
+                GROUP BY level
+            ");
+
+            foreach ($rows ?: [] as $row)
+                $result[(int) $row['level']] = (int) $row['items_count'];
+        }
+
+        return $result;
+    }
+
     //------------------------------------------------------------------------------------------------------------------
     // Helpers
 

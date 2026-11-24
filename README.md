@@ -544,37 +544,40 @@ its own `fixer_*` row (empty blocks are written in bulk), so the analyzers, `syn
 
 `TEZOS_START_LEVEL=1` (the default) indexes the whole history, which is what gives the bots complete data. The
 chain is at roughly 15.95M blocks at the end of 2026 and blocks get denser as it goes - NFTs appear from about
-1.3M - so **plan for weeks, not days**. [`sql/data/README.md`](sql/data/README.md) lists what a later start level
+1.3M - so **plan for days**. [`sql/data/README.md`](sql/data/README.md) lists what a later start level
 costs instead.
 
-Measured on the test stand against a self-hosted TzKT. The two syncs are independent cursors with very
-different speeds:
+Measured on the test stand against a self-hosted TzKT, in the sparse region below level 600k. Quote the item
+rates rather than the level rates when comparing: a level costs what its transactions cost, and levels get denser
+as the chain goes on, so levels per second falls even when nothing has got slower.
 
-| Stage | Rate | Over 15.95M levels |
-|-------|------|--------------------|
-| `stage-sync-transactions` | 35-50 levels/s (density dependent) | about 4 days |
-| `stage-sync-bigmaps` | about 5 levels/s around level 1.4M | **weeks - this is the long pole** |
+| Stage | Levels/s | Items/s |
+|-------|----------|---------|
+| `stage-sync-transactions` | about 460 | about 1,340 |
+| `stage-sync-bigmaps` | 36-44 | about 2,000 |
 
-The bigmap sync is the one that decides when a from-scratch index is done, and it is slow because it is doing real
-work: around 340 `bigmap_updates_*` inserts a second at that point in the chain, where FA2 contracts are dense.
-Both stages are single cursors that cannot be scaled sideways (see the `stage-*` row in [Services](#services)), so
-these are properties of the design, not of the hardware.
+Both stages are single cursors that cannot be scaled sideways (see the `stage-*` row in [Services](#services)).
+Running them together costs almost nothing: pausing the transaction sync moved the bigmap sync from 44 to 36
+levels/s, which is noise.
 
-**Keep the queue workers stopped while catching up.** They exist to fetch token metadata and build previews, which
-is of no use until the syncs reach the levels that reference them, and 46 of them against one MySQL costs the
-syncs real throughput: measured 33-35 levels/s with the full stack running against 43-51 with `worker-*` stopped,
-with host load dropping from 18 to under 14 on an 18-core box. Start them once the syncs are close to the head.
+Those numbers are what they are because of two changes, both worth knowing about if this code is profiled again:
+
+- **Fat-Free's query log is disabled** in `VssDb::open()`. It built a regex per bound parameter and ran
+  `preg_replace` with all of them over the statement, to store an interpolated copy nothing reads, and the log
+  only grew. On the same 200-level range: 81.0s with it, 9.6s without.
+- **A whole level range is written in one transaction**, with multi-row inserts, addresses resolved in bulk and
+  one grouped `COUNT(*)` for the in/out check, instead of 9 + 2k queries per level. Same range: 9.6s to 2.2s.
+  `SyncBigmapUpdates` still writes level by level and is the obvious next candidate.
+
+**Keep the queue workers stopped while catching up.** They exist to fetch token metadata and build previews,
+which is of no use until the syncs reach the levels that reference them, and 46 of them against one MySQL costs
+the syncs throughput. Start them once the syncs are close to the head.
 
 **What will not help:** MySQL tuning and faster storage. On a 659 MB database with an 8 GB buffer pool the test
 stand ran at `Innodb_buffer_pool_reads = 0` and `Innodb_data_reads = 0` - not one physical read - with about
 14 MB/s of writes and 18 fsyncs a second. There is no I/O to optimise, so ZFS recordsize, a faster disk or a
 bigger buffer pool change nothing. TzKT is not the limit either: it answered a 100-level range in 86-250ms, which
-is 1-3ms per level against the 20-25ms the sync spends on it.
-
-**Where the time actually goes** is round trips: roughly 20 small queries per level, two transactions per level
-across two connections, and a `SELECT COUNT(*)` per level, each costing 0.3-0.6ms under load. Batching those
-inserts and committing once per 100-level batch instead of twice per level is the one change that would move the
-transaction sync's ceiling; it has not been done here.
+is 1-3ms per level. What was left after the two changes above is PHP building rows, not the database.
 
 What matters for the catch-up:
 
