@@ -33,7 +33,7 @@ class TezosNetwork extends AbstractCommand
             {
                 Vss::dbCloseAll();
 
-                if (Time::Microtime() - $tsStart > Config::kJOBS_TIMEOUT_DEFAULT)
+                if (Time::Microtime() - $tsStart > Config::runTimeLimit())
                     break;
 
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -169,7 +169,7 @@ class TezosNetwork extends AbstractCommand
         {
             Vss::dbCloseAll();
 
-            if (Time::Microtime() - $tsStart > Config::kJOBS_TIMEOUT_DEFAULT)
+            if (Time::Microtime() - $tsStart > Config::runTimeLimit())
                 break;
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

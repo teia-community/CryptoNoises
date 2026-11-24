@@ -72,7 +72,7 @@ class TelegramNotifier extends AbstractCommand
 
         $iteration = 0;
 
-        while (Time::Microtime() - $tsStart <= Config::kJOBS_TIMEOUT_DEFAULT)
+        while (Time::Microtime() - $tsStart <= Config::runTimeLimit())
         {
             $this->logMsg("Iteration ".(++$iteration));
 

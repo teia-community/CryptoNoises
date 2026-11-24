@@ -22,6 +22,11 @@ abstract class QueueAbstract extends VssModel
     const kSELECT_MODE_Normal                   = 'normal';
     const kSELECT_MODE_Anyone                   = 'anyone';
 
+    // kSELECT_MODE_Normal used to order by "priority, iteration, RAND()". The RAND() was there so that parallel
+    // workers would not keep picking the same row; SKIP LOCKED does that properly now (see claimNextTask()), and
+    // sorting the whole matching set at random is expensive once a queue holds a real backlog. The order is
+    // deterministic and index-friendly instead.
+
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     public string $selectMode                   = self::kSELECT_MODE_Normal;
@@ -52,8 +57,60 @@ abstract class QueueAbstract extends VssModel
         $this->dbConnection()->insert($tableName, $params, 'IGNORE');
     }
 
-    public function getNextTask(int $threadIndex, int $threadCount): ?array
+    /**
+     * Takes the next task and marks it 'syncing' in one transaction, so any number of workers can share a queue.
+     *
+     * SELECT ... FOR UPDATE SKIP LOCKED makes InnoDB hand each concurrent worker a different row instead of making
+     * them wait for the same one. Without it the select and the 'syncing' update are two statements with a race
+     * between them, which is why this used to need the queue_task_id % threadCount sharding to stay correct:
+     * exactly one worker was allowed to look at each row. Workers are interchangeable now, so they can be scaled
+     * freely (docker compose up --scale), and threadIndex / threadCount are only kept for callers that still pass
+     * them. Needs MySQL 8.0+ or MariaDB 10.6+.
+     *
+     * @return array|null the claimed task, already in state 'syncing', or null when the queue has nothing ready
+     */
+    public function claimNextTask(int $threadIndex = 0, int $threadCount = 0): ?array
     {
+        $db = $this->dbConnection();
+
+        $db->transactionBegin();
+
+        try
+        {
+            $taskItem = $this->getNextTask($threadIndex, $threadCount, true);
+
+            if ($taskItem === null)
+            {
+                $db->transactionCommit();
+                return null;
+            }
+
+            // Claim it while the row is still locked. last_notice is cleared like openSyncProcess() did.
+            $db->update($this->tableName(),
+                ['state' => self::kState_Syncing, 'last_notice' => null],
+                ['queue_task_id' => $taskItem['queue_task_id']]);
+
+            $db->transactionCommit();
+
+            $taskItem['state']       = self::kState_Syncing;
+            $taskItem['last_notice'] = null;
+
+            return $taskItem;
+        }
+        catch (\Throwable $e)
+        {
+            $db->transactionRollback();
+            throw $e;
+        }
+    }
+
+    /**
+     * @param bool $lockRow adds FOR UPDATE SKIP LOCKED; only valid inside a transaction (see claimNextTask())
+     */
+    public function getNextTask(int $threadIndex, int $threadCount, bool $lockRow = false): ?array
+    {
+        $lock = $lockRow ? ' FOR UPDATE SKIP LOCKED' : '';
+
         if ($this->selectMode == self::kSELECT_MODE_FirstInFirstOut)
         {
             $sql = "
@@ -64,7 +121,7 @@ abstract class QueueAbstract extends VssModel
                     ".($threadCount > 1 && $threadIndex < $threadCount ? " AND queue_task_id % $threadCount = $threadIndex " : '' )."
                 ORDER BY queue_task_id
                 LIMIT 1
-            ";
+            ".$lock;
         }
         else if ($this->selectMode == self::kSELECT_MODE_Anyone)
         {
@@ -75,7 +132,7 @@ abstract class QueueAbstract extends VssModel
                     AND ts_activate <= NOW()
                     ".($threadCount > 1 && $threadIndex < $threadCount ? " AND queue_task_id % $threadCount = $threadIndex " : '' )."
                 LIMIT 1
-            ";
+            ".$lock;
         }
         else // self::kSELECT_MODE_Normal (default) and any unknown mode
         {
@@ -85,9 +142,9 @@ abstract class QueueAbstract extends VssModel
                 WHERE state = :state
                   AND ts_activate <= NOW()
                       ".($threadCount > 1 && $threadIndex < $threadCount ? " AND queue_task_id % $threadCount = $threadIndex " : '' )."
-                ORDER BY priority, iteration, RAND()
+                ORDER BY priority, iteration, queue_task_id
                 LIMIT 1
-            ";
+            ".$lock;
         }
 
         return $this->dbConnection()->queryRow($sql, ['state'=>self::kState_Idle]);

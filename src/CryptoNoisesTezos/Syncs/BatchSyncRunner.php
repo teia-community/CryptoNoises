@@ -43,7 +43,7 @@ final class BatchSyncRunner
      */
     public function run(float $tsStart, int $levelsLimit): void
     {
-        while ($levelsLimit > 0 && Time::Microtime() - $tsStart <= Config::kJOBS_TIMEOUT_DEFAULT)
+        while ($levelsLimit > 0 && Time::Microtime() - $tsStart <= Config::runTimeLimit())
         {
             Vss::dbCloseAll();
 
@@ -89,7 +89,7 @@ final class BatchSyncRunner
 
         for ($level = $levelFrom; $level <= $range->levelTo && $synced < $levelsLimit; $level++, $synced++)
         {
-            if (Time::Microtime() - $tsStart > Config::kJOBS_TIMEOUT_DEFAULT)
+            if (Time::Microtime() - $tsStart > Config::runTimeLimit())
                 break;
 
             if (!isset($range->itemsByLevel[$level]))

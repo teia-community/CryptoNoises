@@ -34,7 +34,7 @@ class EventsTokensUpdates extends AbstractCommand
 
         while (true)
         {
-            if (Time::Microtime() - $tsStart > Config::kJOBS_TIMEOUT_DEFAULT)
+            if (Time::Microtime() - $tsStart > Config::runTimeLimit())
                 break;
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

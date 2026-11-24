@@ -37,7 +37,7 @@ class AnalyzeBigmapUpdates extends AbstractCommand
         {
             while($limit-- > 0)
             {
-                if (Time::Microtime() - $tsStart > Config::kJOBS_TIMEOUT_DEFAULT)
+                if (Time::Microtime() - $tsStart > Config::runTimeLimit())
                     break;
 
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

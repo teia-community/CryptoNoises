@@ -9,6 +9,9 @@ use VssCfg;
 
 trait JobsController_Executor
 {
+    // How often a running worker re-reads its command-lock.<job> switch
+    private const kLOCK_RECHECK_INTERVAL_SEC = 10;
+
     protected function startJob(string                                  $jobId, string $jobLockerId,
                                 \CryptoCore\Models\Queues\QueueAbstract $queueModel,
                                 \CryptoCore\Jobs\AbstractJob            $jobInstance,
@@ -21,12 +24,20 @@ trait JobsController_Executor
         ini_set('memory_limit', '512M');
         set_time_limit($timeLimitWithSafeReserve);
 
-        if (!$this->checkLockAndWaitUntilNoOtherInstanceRuns($jobLockerId, $timeLimit))
+        // Only the parallel-run guard here. The command-lock.<job> switch is handled inside the loop instead, so a
+        // paused worker idles and resumes on its own: exiting would just have the restart policy start it again,
+        // which is far more churn than the once-a-minute cron invocation this replaces.
+        if (!$this->waitUntilNoOtherInstanceRuns($timeLimit))
             return;
 
         $jobInstance->verbose = $this->verbose;
 
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+        // command-lock.<job> is re-read while the worker runs, not only at startup: a worker lives for $timeLimit
+        // seconds, so reading it once would mean the pause switch took effect at the next restart at the earliest.
+        $tsLockChecked = 0.0;   // 0 forces a check on the first iteration
+        $isLocked      = false;
 
         while (true)
         {
@@ -35,11 +46,32 @@ trait JobsController_Executor
             if (Time::Microtime() - $tsStart > $timeLimit)
                 break;
 
+            if (Time::Microtime() - $tsLockChecked >= self::kLOCK_RECHECK_INTERVAL_SEC)
+            {
+                $tsLockChecked = Time::Microtime();
+                $wasLocked     = $isLocked;
+                $isLocked      = $this->isCommandLocked($jobLockerId);
+
+                if ($isLocked && !$wasLocked)
+                    $this->logMsg("Command locked! Waiting for the lock to be released");
+                else if (!$isLocked && $wasLocked)
+                    $this->logMsg("Command unlocked, resuming");
+            }
+
+            // Paused: stay alive and keep polling the switch, so no task is claimed meanwhile
+            if ($isLocked)
+            {
+                sleep(1);
+                continue;
+            }
+
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
             $tsJobStart = Time::Microtime();
 
-            $taskItem = $queueModel->getNextTask($threadIdx, $threadCnt);
+            // Claims the task atomically (SELECT ... FOR UPDATE SKIP LOCKED + mark 'syncing'), so several workers
+            // can share one queue without the threadIdx / threadCnt sharding this used to depend on.
+            $taskItem = $queueModel->claimNextTask($threadIdx, $threadCnt);
 
             if ($taskItem == null)
             {
@@ -69,7 +101,7 @@ trait JobsController_Executor
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-            $queueModel->openSyncProcess($taskItem);
+            // claimNextTask() already put the task into 'syncing'
 
             $result = $jobInstance->execute($taskItem);
 
