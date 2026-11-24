@@ -7,8 +7,8 @@ use CryptoCore\Time;
 use Discord\Builders\MessageBuilder;
 use Discord\Http\Exceptions\NoPermissionsException;
 use Discord\Parts\Channel\Channel;
-use Discord\Parts\Channel\Message;
-use Discord\Parts\Embed\Embed;
+use Discord\Parts\Channel\Message\Message;
+use Discord\Parts\Channel\Message\Embed\Embed;
 use Exception;
 use Throwable;
 
@@ -138,7 +138,7 @@ trait DiscordAssistantThread_Stats
     {
         try
         {
-            $channel->sendMessage($messageBuilder)->done(
+            $channel->sendMessage($messageBuilder)->then(
                 function (Message $message) use ($workerId)
                 {
                     Models\Config::model()->setValue('discord.stats.main.message-id', $message->id);
@@ -160,7 +160,7 @@ trait DiscordAssistantThread_Stats
     {
         try
         {
-            $channel->messages->fetch($messageId)->done(
+            $channel->messages->fetch($messageId)->then(
                 function (Message $message) use ($workerId, $messageBuilder)
                 {
                     $message->edit($messageBuilder);

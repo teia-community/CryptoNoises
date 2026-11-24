@@ -3,7 +3,7 @@
 namespace CryptoNoises\Bots\Core;
 
 use Discord\Discord;
-use Discord\Parts\Embed\Embed;
+use Discord\Parts\Channel\Message\Embed\Embed;
 
 class DiscordEmbedWrapper
 {
@@ -73,7 +73,14 @@ class DiscordEmbedWrapper
         $footer = trim((string) $footer);
 
         if ($footer)
-            $this->embedInstance()->setFooter($footer);
+        {
+            $embed = $this->embedInstance();
+            $embed->setFooter($footer);
+
+            // setFooter() always writes an "icon_url" key, null included, and Discord rejects a null icon_url.
+            // Re-set the footer with the text only (this is what the manual vendor/ patch used to do).
+            $embed->footer = ['text' => $footer];
+        }
 
         return $this;
     }
@@ -98,7 +105,7 @@ class DiscordEmbedWrapper
         $url = trim((string) $url);
 
         if ($url)
-            $this->embedInstance()->setUrl($url);
+            $this->embedInstance()->setURL($url);
 
         return $this;
     }

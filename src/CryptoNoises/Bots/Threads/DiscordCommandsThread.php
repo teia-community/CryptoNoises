@@ -6,7 +6,7 @@ use CryptoNoises\Bots\Core\SlashCommand;
 use CryptoNoises\Bots\Threads\Helpers\CommandWrapper;
 use CryptoNoises\Core\Log;
 use Discord\Discord;
-use Discord\Parts\Interactions\Command\Command;
+use Discord\Parts\Application\Command\Command;
 use Exception;
 
 class DiscordCommandsThread extends DiscordAbstractThread
@@ -99,7 +99,7 @@ class DiscordCommandsThread extends DiscordAbstractThread
         {
             $this->discord->getLogger()->notice("Ready");
 
-            $this->discord->application->commands->freshen()->done(function ($commands)
+            $this->discord->application->commands->freshen()->then(function ($commands)
             {
                 $this->discord->getLogger()->notice("Received ".count($commands)." application commands");
 
@@ -178,7 +178,7 @@ class DiscordCommandsThread extends DiscordAbstractThread
 
         try
         {
-            $this->discord->application->commands->save($command->buildCommand())->done(
+            $this->discord->application->commands->save($command->buildCommand())->then(
                 function()
                 {
                     $this->discord->getLogger()->notice(" > Done");
@@ -212,7 +212,7 @@ class DiscordCommandsThread extends DiscordAbstractThread
         {
             $this->discord->getLogger()->notice("Ready");
 
-            $this->discord->application->commands->freshen()->done(function ($commands) use ($filterCommands)
+            $this->discord->application->commands->freshen()->then(function ($commands) use ($filterCommands)
             {
                 $this->discord->getLogger()->notice("Received ".count($commands)." application commands");
 
@@ -262,7 +262,7 @@ class DiscordCommandsThread extends DiscordAbstractThread
 
         try
         {
-            $this->discord->application->commands->delete($command)->done(
+            $this->discord->application->commands->delete($command)->then(
                 function()
                 {
                     $this->discord->getLogger()->notice(" > Done");

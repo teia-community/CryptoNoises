@@ -30,6 +30,9 @@ class TelegramBotConnection
     const kQUERY_TYPE_ApiSendMessage        = 'api:send-message';
 
     const FORMAT_HTML                       = 'HTML';
+
+    // Bot API 7.0 replaced the "disable_web_page_preview" flag by the LinkPreviewOptions object
+    const LINK_PREVIEW_DISABLED             = ['is_disabled' => true];
     protected string $apiKey;
     protected ?Client $client;
 
@@ -293,29 +296,22 @@ class TelegramBotConnection
             if ($editMessageId)
             {
                 $result = $this->client->editMessageText(
-                    $this->user->platformChannelId, #   $chat_id
-                    $editMessageId,                 #   $message_id
-                    null,                           #   $inline_message_id
-                    $message,                       #   $text
-                    self::FORMAT_HTML,              #   $parse_mode
-                    null,                           #   $entities
-                    true,                           #   $disable_web_page_preview
-                    $menu                           #   $reply_markup
+                    text:                   $message,
+                    chat_id:                $this->user->platformChannelId,
+                    message_id:             $editMessageId,
+                    parse_mode:             self::FORMAT_HTML,
+                    link_preview_options:   self::LINK_PREVIEW_DISABLED,
+                    reply_markup:           $menu
                 );
             }
             else
             {
                 $result = $this->client->sendMessage(
-                    $this->user->platformChannelId, #   $chat_id
-                    $message,                       #   $text
-                    self::FORMAT_HTML,              #   $parse_mode
-                    null,                           #   $entities
-                    true,                           #   $disable_web_page_preview
-                    null,                           #   $disable_notification
-                    null,                           #   $protect_content
-                    null,                           #   $reply_to_message_id
-                    null,                           #   $allow_sending_without_reply
-                    $menu                           #   $reply_markup
+                    chat_id:                $this->user->platformChannelId,
+                    text:                   $message,
+                    parse_mode:             self::FORMAT_HTML,
+                    link_preview_options:   self::LINK_PREVIEW_DISABLED,
+                    reply_markup:           $menu
                 );
             }
 
@@ -350,16 +346,11 @@ class TelegramBotConnection
             $menu = $inlineKeyboard ? ['inline_keyboard' => $inlineKeyboard] : null;
 
             $result = $this->client->sendPhoto(
-                $this->user->platformChannelId, #   $chat_id
-                $imageUrl,                      #   $photo
-                $caption,                       #   $caption
-                self::FORMAT_HTML,              #   $parse_mode
-                null,                           #   $caption_entities
-                null,                           #   $disable_notification
-                null,                           #   $protect_content
-                null,                           #   $reply_to_message_id
-                null,                           #   $allow_sending_without_reply
-                $menu                           #   $reply_markup
+                chat_id:        $this->user->platformChannelId,
+                photo:          $imageUrl,
+                caption:        $caption,
+                parse_mode:     self::FORMAT_HTML,
+                reply_markup:   $menu
             );
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -394,18 +385,12 @@ class TelegramBotConnection
             $menu = $inlineKeyboard ? ['inline_keyboard' => $inlineKeyboard] : null;
 
             $result = $this->client->sendAnimation(
-                $this->user->platformChannelId, #   $chat_id
-                $animeUrl,                      #   $animation
-                null, null, null,               #   $duration, $width, $height
-                $thumbUrl,                      #   $thumb
-                $caption,                       #   $caption
-                self::FORMAT_HTML,              #   $parse_mode
-                null,                           #   $caption_entities
-                null,                           #   $disable_notification
-                null,                           #   $protect_content
-                null,                           #   $reply_to_message_id
-                null,                           #   $allow_sending_without_reply
-                $menu                           #   $reply_markup
+                chat_id:        $this->user->platformChannelId,
+                animation:      $animeUrl,
+                thumbnail:      $thumbUrl,
+                caption:        $caption,
+                parse_mode:     self::FORMAT_HTML,
+                reply_markup:   $menu
             );
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -441,19 +426,12 @@ class TelegramBotConnection
             $menu = $inlineKeyboard ? ['inline_keyboard' => $inlineKeyboard] : null;
 
             $result = $this->client->sendVideo(
-                $this->user->platformChannelId, #   $chat_id
-                $videoUrl,                      #   $video
-                null, null, null,               #   $duration, $width, $height
-                $thumbUrl,                      #   $thumb
-                $caption,                       #   $caption
-                self::FORMAT_HTML,              #   $parse_mode
-                null,                           #   $caption_entities
-                null,                           #   $supports_streaming
-                null,                           #   $disable_notification
-                null,                           #   $protect_content
-                null,                           #   $reply_to_message_id
-                null,                           #   $allow_sending_without_reply
-                $menu                           #   $reply_markup
+                chat_id:        $this->user->platformChannelId,
+                video:          $videoUrl,
+                thumbnail:      $thumbUrl,
+                caption:        $caption,
+                parse_mode:     self::FORMAT_HTML,
+                reply_markup:   $menu
             );
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

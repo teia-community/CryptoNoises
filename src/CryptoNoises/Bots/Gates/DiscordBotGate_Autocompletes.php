@@ -7,7 +7,7 @@ use CryptoNoises\Bots\Core\SlashCommand;
 use CryptoNoises\Localize\Phrase;
 use Discord\Builders\MessageBuilder;
 use Discord\Discord;
-use Discord\Parts\Interactions\Command\Choice;
+use Discord\Parts\Application\Command\Choice;
 use Discord\Parts\Interactions\Interaction;
 
 trait DiscordBotGate_Autocompletes

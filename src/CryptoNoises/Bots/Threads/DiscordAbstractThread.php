@@ -6,6 +6,7 @@ use Discord\Discord;
 use Discord\WebSockets\Intents;
 use Exception;
 use Monolog\Handler\StreamHandler;
+use Monolog\Level;
 use Monolog\Logger;
 use VssCfg;
 
@@ -30,14 +31,14 @@ abstract class DiscordAbstractThread
 
             if ($this->logVerbose)
             {
-                $logger->pushHandler(new StreamHandler('php://stdout', Logger::INFO));
+                $logger->pushHandler(new StreamHandler('php://stdout', Level::Info));
             }
             else
             {
                 $scope = explode('\\', get_class($this));
                 $scope = array_pop($scope);
 
-                $logger->pushHandler(new StreamHandler(VssCfg::cfg()->pathLog."/$scope-".date('Ymd').".log", Logger::WARNING));
+                $logger->pushHandler(new StreamHandler(VssCfg::cfg()->pathLog."/$scope-".date('Ymd').".log", Level::Warning));
             }
 
             $this->discord = new Discord([

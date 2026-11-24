@@ -31,12 +31,12 @@ use Discord\Discord;
 use Discord\Http\Exceptions\NoPermissionsException;
 use Discord\InteractionType;
 use Discord\Parts\Channel\Channel;
-use Discord\Parts\Channel\Message;
+use Discord\Parts\Channel\Message\Message;
 use Discord\Parts\Interactions\Interaction;
 use Discord\Parts\User\User as DiscordUser;
 use Exception;
 use Throwable;
-use React\Promise\ExtendedPromiseInterface;
+use React\Promise\PromiseInterface;
 
 class DiscordBotConnection
 {
@@ -269,7 +269,7 @@ class DiscordBotConnection
                 }
 
                 // Fetch user data and then send message
-                $this->discord->users->fetch($discordUserId)->done(
+                $this->discord->users->fetch($discordUserId)->then(
                     function (DiscordUser $userDiscord) use ($message, $notification, $logRecord)
                     {
                         $this->sendMessageToUser($userDiscord, $message, $notification, $logRecord);
@@ -318,7 +318,7 @@ class DiscordBotConnection
     {
         $onFailed = $this->asyncFailureHandler($logRecord, $this->onDeliveryFailed);
 
-        $channel->sendMessage($message)->done(
+        $channel->sendMessage($message)->then(
             function (Message $message) use ($logRecord)
             {
                 $logRecord->doneSuccess();
@@ -337,7 +337,7 @@ class DiscordBotConnection
     {
         $onFailed = $this->asyncFailureHandler($logRecord, $this->onDeliveryFailed);
 
-        $user->sendMessage($message)->done(
+        $user->sendMessage($message)->then(
             function (Message $message) use ($logRecord)
             {
                 $logRecord->doneSuccess();
@@ -394,7 +394,7 @@ class DiscordBotConnection
                 ->setContent($infoMessage)
                 ->setAllowedMentions(['parse' => [], 'users' => [(string) $discordUserId]]);
 
-            $autoReportChannel->sendMessage($infoBuilder)->done(
+            $autoReportChannel->sendMessage($infoBuilder)->then(
                 function (Message $message) use ($delayInMinutes)
                 {
                     $message->delayedDelete($delayInMinutes * 60 * 1000);
@@ -597,7 +597,7 @@ class DiscordBotConnection
 
     //------------------------------------------------------------------------------------------------------------------
 
-    public function replyNotification(Message $replyToMessage, Notification $notification): ?ExtendedPromiseInterface
+    public function replyNotification(Message $replyToMessage, Notification $notification): ?PromiseInterface
     {
         $discordUserId    = $this->user->platformUserId;
         $discordChannelId = $this->user->platformChannelId;

@@ -4,7 +4,7 @@ namespace CryptoNoises\Bots\Threads;
 
 use CryptoNoises\Models;
 use Discord\Parts\Guild\Guild;
-use Discord\Parts\User\Member;
+use Discord\Parts\Guild\Member\Member;
 use Exception;
 use Throwable;
 
@@ -29,7 +29,7 @@ trait DiscordAssistantThread_ServerMembers
             if ($guild === null)
                 throw new Exception('Cannot find guild instance');
 
-            $guild->members->freshen()->done(
+            $guild->members->freshen()->then(
                 function () use ($guild)
                 {
                     $this->serverMembers_save($guild);
