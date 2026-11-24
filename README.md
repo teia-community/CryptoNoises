@@ -20,8 +20,8 @@ Entry points:
 |------|------|---------|
 | `public-api/` | web root | Telegram webhooks. |
 | `public-app/` | web root | Short links that redirect to marketplaces (`/token/...`, `/user/...`, `/collection/...`). |
-| `commands/run` | CLI | Bots + API commands (cron jobs, Discord threads, maintenance). |
-| `commands/run-tezos` | CLI | Indexer commands (cron jobs). |
+| `commands/run` | CLI | Bots + API commands: the notifier and event loops, Discord threads, maintenance. |
+| `commands/run-tezos` | CLI | Indexer commands: the sync and analyze stages, the queue workers, maintenance. |
 | `bin/discord-*` | shell | Start / stop / restart Discord bot threads. |
 
 Run `commands/run` or `commands/run-tezos` without arguments to print the list of available commands.
@@ -62,8 +62,8 @@ diagnostic into `$f3->error(500, ...)`, and its `HALT` default ends the process 
 `error_reporting` keeps `E_WARNING` and `E_DEPRECATED`, a single warning anywhere kills the running command - and in
 a sequential indexer stage, that wedges the stage on one block for good. This is why moving from 7.4 to 8.x was
 mostly a hunt for reads that used to be harmless notices. When you next raise the PHP version, expect the same:
-run the indexer against live data and watch `log/php_error.*.log`, because a new deprecation will stop a cron
-command rather than just log a line.
+run the indexer against live data and watch `log/php_error.*.log`, because a new deprecation will stop a worker
+or a scheduled command rather than just log a line.
 
 ## Running with Docker
 
@@ -293,7 +293,8 @@ Notes:
 - Schema files can be applied again safely (`CREATE TABLE IF NOT EXISTS`).
 - Some tables are created by the code at runtime, they are not in the schema:
   - monthly log tables `<name>_YYYY_MM` (bots DB) - from `template__<name>` tables by `/lifecycle/prepare/tables`
-    (cron runs it daily; run it once by hand after creating the schema);
+    (the `scheduler` service runs it daily, and `db-init` creates the current month; without Docker, run it once
+    by hand after creating the schema);
   - block-range tables `transactions_NNNNxxxx` / `bigmap_updates_NNNNxxxx` (Tezos log DB) - from
     `template__transactions_0xxxx` / `template__bigmap_updates_0xxxxx` of the Tezos DB, during blockchain sync;
   - `temp__events_flow_locked_ids__*` (bots DB).
@@ -483,13 +484,20 @@ its own `fixer_*` row (empty blocks are written in bulk), so the analyzers, `syn
 
 ### Initial sync from block 1
 
-The indexer starts from block 1 so that the database has the whole history. On a test stand (TzKT over the internet,
-MySQL 8 in Docker) the sync ran at ~500 blocks/s and the transactions analysis at ~250 blocks/s on the early chain;
-blocks get denser later (NFTs appear from ~1.3M), so plan for days, not hours, to reach the chain head
-(~15.8M blocks at the end of 2026). For the initial sync:
+`TEZOS_START_LEVEL=1` (the default) indexes the whole history, which is what gives the bots complete data. The
+chain is at roughly 15.95M blocks at the end of 2026 and blocks get denser as it goes - NFTs appear from about
+1.3M - so **plan for days, not hours**. [`sql/data/README.md`](sql/data/README.md) lists what a later start level
+costs instead.
 
-- **MySQL without replication:** let InnoDB flush its log once a second instead of on every commit (about 2x faster
-  on the test stand) and, if you do not need the binary log, turn it off; restore your settings after the catch-up:
+What matters for the catch-up:
+
+- **Your own TzKT.** This is the first thing to get right, not an optimisation. The sync asks TzKT for every block,
+  and the public endpoint rate-limits long before the hardware is busy: see [TzKT API](#tzkt-api). A from-scratch
+  sync against `api.tzkt.io` is not realistic.
+- **MySQL write settings.** The compose `db` service already starts with `innodb_flush_log_at_trx_commit=2` and
+  `--skip-log-bin`, which is the right trade for a write-heavy catch-up: InnoDB flushes its log once a second
+  instead of on every commit, and nothing is written to a binary log. There is nothing to tune by hand under
+  Docker. Outside Docker that is:
 
   ```ini
   [mysqld]
@@ -497,14 +505,14 @@ blocks get denser later (NFTs appear from ~1.3M), so plan for days, not hours, t
   disable_log_bin                       # MySQL 8 writes a binary log by default; MariaDB does not
   ```
 
-- **MySQL with replication:** do not change these settings on a replicated server. A crash-safe replica needs
+- **Do not use those settings on a replicated server.** A crash-safe replica needs
   `innodb_flush_log_at_trx_commit = 1` and `sync_binlog = 1`; with weaker values a crash leaves the primary and the
-  replica silently out of sync. Instead, run the catch-up on a separate server without replication (settings above),
-  then restore the defaults, take a snapshot (`mysqldump`, Percona XtraBackup or the MySQL clone plugin) and set up
-  the primary and the replica from it. After the catch-up the indexer writes a block every few seconds, so the
-  default settings are not a bottleneck.
-- Keep the hourly `cleanup` in cron: it removes raw log tables that both the sync and the analyzer have passed.
-- Keep the bots disabled until the indexer has caught up, see [Enabling the bots](#enabling-the-bots).
+  replica silently out of sync. Run the catch-up on a server without replication, then restore the defaults, take a
+  snapshot (`mysqldump`, Percona XtraBackup or the MySQL clone plugin) and build the primary and replica from it.
+  Once caught up the indexer writes a block every few seconds, so the defaults are not a bottleneck.
+- **Leave the `scheduler` running.** Its hourly `cleanup` entries drop the raw log tables that both the sync and
+  the analyzer have passed; without them the Tezos log database grows for the whole catch-up.
+- **Leave the bots stopped** until the indexer has caught up, see [Enabling the bots](#enabling-the-bots).
 
 ### TzKT API
 
@@ -542,12 +550,13 @@ This is separate from `tezos.ipfs_local_base_url`, which is where *your* generat
 | `/analyze/bigmap-updates/new` | `bigmap_updates_*` | `bigmaps`, `bigmap_keys*`, `bigmap_data_*` (ledgers, operators, supply, metadata, token metadata, market deals / offers); post actions push work to `queue_contracts`, `queue_tokens_detected`, `queue_profiles` and update Tezos domains (`domains_*`) |
 | `/analyze/transactions/new` | `transactions_*` | "hunters" (`Analyzers/TransactionHunters/`) recognize mints and updates on known marketplaces (objkt, teia, fxhash, kalamint, rarible) and profile changes; they push to `queue_profiles` / `queue_tokens_metadata_merge` |
 
-An analyzer never runs ahead of the sync it reads (the transactions analyzer waits for both syncs), so cron order
-does not matter.
+An analyzer never runs ahead of the sync it reads (the transactions analyzer waits for both syncs), so the order
+the stages are started in does not matter.
 
 ### 3. Jobs: queues -> metadata, media, profiles
 
-`run-tezos /jobs/exec jobId=<id> threadIdx=<i> threadCnt=<n>`, every queue is a table in the tezos DB:
+`run-tezos /jobs/exec jobId=<id>`, every queue is a table in the tezos DB. `threadIdx` / `threadCnt` are still
+accepted but no longer needed - see [Why the workers can be scaled now](#why-the-workers-can-be-scaled-now):
 
 | `jobId` | Queue table | What it does | Pushes to |
 |---------|-------------|--------------|-----------|
@@ -561,8 +570,11 @@ does not matter.
 
 Queue mechanics (`src/CryptoCore/Models/Queues/QueueAbstract.php`): a task is `idle` -> `syncing` -> moved to
 `<queue>__done` on success; on failure it is retried later (`iteration`, back-off `iteration^2` minutes) and after 16
-tries moved to `<queue>__failed`. `threadIdx` / `threadCnt` split tasks by `queue_task_id % threadCnt`.
-`/jobs/recover-dead-jobs` returns tasks stuck in `syncing` (and stuck sync blocks) back to `idle`.
+tries moved to `<queue>__failed`. A task is taken with `SELECT ... FOR UPDATE SKIP LOCKED` and marked `syncing`
+in the same transaction, so any number of workers can share a queue; passing `threadIdx` / `threadCnt` additionally
+splits tasks by `queue_task_id % threadCnt`, which is how this used to be made safe.
+`/jobs/recover-dead-jobs` returns tasks stuck in `syncing` (and stuck sync blocks) back to `idle`, which is what
+recovers a worker that was killed mid-task.
 
 ### Where the progress is stored
 
@@ -586,12 +598,16 @@ recoveries, `fixer_thrash` keeps the rows removed by `sync-check` roll-backs.
 Two more switches:
 
 - `command-lock.<command>` keys in `config` (tezos and main DB) pause a command by hand: any value other than `0`
-  makes it exit with `Command locked!` (add `unlock=1` to run it anyway). Parallel runs of the same command are
-  prevented separately, by checking the process list, so cron can start everything every minute.
+  makes it exit with `Command locked!` (add `unlock=1` to run it anyway); `/jobs/exec` re-reads it while running
+  and idles until it is cleared, see [Pausing a command](#pausing-a-command). Parallel runs of the same command are
+  prevented separately, by checking the process list, which is what makes a once-a-minute crontab safe - under
+  Docker each container has its own PID namespace, so that guard only sees its own processes and the single-instance
+  `stage-*` services are what keep the cursors to one writer.
 - `command-lock.analyze.bigmap-updates.max-level` (tezos `config`): stop the bigmap analysis at this block
   (`NULL` = no limit).
 
-On a fresh database these tables are empty and the commands stop with `<fixer table>: no jobs yet, seed the start level first`. The indexer
+On a fresh database these tables are empty and the commands stop with
+`<fixer table>: no jobs yet, seed the start level first`. The indexer
 start point comes with the data in `sql/data/` (see [Database](#database)): block 1 in the three `fixer_*` tables of
 the tezos DB and `TezosAnalyzer.LastSyncedLevel = 0`. To index only recent history, change these values together
 before loading, see [`sql/data/README.md`](sql/data/README.md).
@@ -607,7 +623,7 @@ a long time), bots only after it has caught up with the chain, then users. The b
 from block 1: they need no history (it is already in the indexer tables), and the raw log tables of old blocks are
 gone anyway (they are dropped 50000 blocks behind the indexer).
 
-Right before enabling the bots in cron:
+Right before starting the bots (`docker compose --profile bots up -d`, or enabling their crontab lines):
 
 ```sql
 -- 1. the last block both indexer syncs have finished (tezos DB)
