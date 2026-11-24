@@ -39,7 +39,11 @@ x-app: &app
     - ipfs-previews:/opt/cryptonoises/external-ipfs
     - private-storage:/opt/cryptonoises/external-storage
     - app-logs:/opt/cryptonoises/log
-  restart: unless-stopped
+
+  # "always" rather than "unless-stopped" on purpose: podman-restart.service, which is what brings containers
+  # back after a reboot on a podman host, only starts containers whose policy is "always". With
+  # "unless-stopped" the stack comes back under Docker and silently does not under podman.
+  restart: always
 
 # Every long-running command: drop to www-data (the entrypoint needs root first), and live for
 # WORKER_TIME_LIMIT_SEC before exiting so the restart policy can recycle the process.
@@ -81,7 +85,7 @@ services:
       timeout: 5s
       retries: 30
       start_period: 60s
-    restart: unless-stopped
+    restart: always
 
   #-------------------------------------------------------------------------------------------------------------------
   # One-shot: schema + reference data + indexer start level + the current month's log tables
@@ -142,7 +146,7 @@ services:
       - "${PORT_API:-8080}:8080"
       - "${PORT_APP:-8081}:8081"
       - "${PORT_MEDIA:-8082}:8082"
-    restart: unless-stopped
+    restart: always
 
   #-------------------------------------------------------------------------------------------------------------------
   # Scheduler: the only work that still runs on a clock (janitors, hourly and daily housekeeping).
