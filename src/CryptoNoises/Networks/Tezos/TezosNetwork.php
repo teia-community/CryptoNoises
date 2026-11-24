@@ -64,6 +64,12 @@ class TezosNetwork extends AbstractNetwork
         'CryptoNoises\Networks\Tezos\Hunters\PigsAtWarHunter',
 
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        // Not a marketplace: comments posted on a token (teia.art). Must come before the Default* hunters,
+        // which would otherwise take the call as an unremarkable contract interaction.
+
+        'CryptoNoises\Networks\Tezos\Hunters\TeiaCommentsHunter',
+
+        // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         // Deprecated Marketplaces
 
         'CryptoNoises\Networks\Tezos\Hunters\HicEtNuncHunter',

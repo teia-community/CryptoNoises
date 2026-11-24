@@ -63,6 +63,7 @@ class Phrase
     public string $filterTypeTokenMint                  = '⚪️ Token mint';
     public string $filterTypeTokenList                  = '🟠 Token listing';
     public string $filterTypeTokenUpdateMetadata        = '🟡 Token metadata updates';
+    public string $filterTypeTokenComment              = '💬 Comments on your tokens';
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 

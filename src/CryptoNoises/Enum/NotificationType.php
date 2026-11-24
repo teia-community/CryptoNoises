@@ -22,6 +22,9 @@ abstract class NotificationType
 
     const TokenUpdateMetadata               = 'token-update-metadata';
 
+    const TokenComment                      = 'token-comment';
+    const TokenCommentReply                 = 'token-comment-reply';
+
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     const TokenBuy                          = 'token-buy';

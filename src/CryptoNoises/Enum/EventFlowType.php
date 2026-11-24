@@ -20,6 +20,9 @@ abstract class EventFlowType
     const TokenMintExpense_Ticket           = 'token-mint-expense:ticket';      // This is for fx(hash) only!
     const TokenUpdateMetadata               = 'token-update-metadata';
 
+    const TokenComment                      = 'token-comment';                 // somebody commented on a token
+    const TokenCommentReply                 = 'token-comment-reply';            // ... answering another comment
+
     const AuctionStart                      = 'auction-start';
     const AuctionEndFailed                  = 'auction-failed';
     const AuctionCancel                     = 'auction-cancel';

@@ -535,7 +535,11 @@ abstract class AbstractHunter
         // #3: {"entrypoint":"transfer","value":{"f":"%","t":"%","amount":"%"}}
         // #4: {"entrypoint":"transfer","value":{"to":"%","from":"%","value":"%"}}
 
-        $paramValue = $recTransfer['parameter']['value'];
+        // A plain tez transfer carries no parameter at all, and this runs over whatever sub-records an operation
+        // group happens to contain. Reading through the missing parameter was a notice on PHP 7.4; on PHP 8 it is
+        // a warning, which Fat-Free turns into a fatal that ends the whole level's analysis - so one ordinary
+        // transfer in a block stopped every event in that block from being noticed.
+        $paramValue = $recTransfer['parameter']['value'] ?? null;
 
         if (!is_array($paramValue))
             return [];

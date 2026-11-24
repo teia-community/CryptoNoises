@@ -85,6 +85,10 @@ class MarketDeals extends AbstractEntity
             case Setapp\ObjktCom_v1::Bigmap_AuctionsEnglish:    return self::PackDealRecord_ObjktComV1_AuctionsEnglish($bigmap, $value);
             case Setapp\ObjktCom_v1::Bigmap_AuctionsDutch:      return self::PackDealRecord_ObjktComV1_AuctionsDutch($bigmap, $value);
 
+            // objkt.com's first two auction contracts: the values carry the same keys as the pair above
+            case Setapp\ObjktCom_v1::Bigmap_AuctionsEnglish_pre: return self::PackDealRecord_ObjktComV1_AuctionsEnglish($bigmap, $value);
+            case Setapp\ObjktCom_v1::Bigmap_AuctionsDutch_pre:   return self::PackDealRecord_ObjktComV1_AuctionsDutch($bigmap, $value);
+
             case Setapp\ObjktCom_v2::Bigmap_Swaps:              return self::PackDealRecord_ObjktComV2_Swaps($bigmap, $value);
             case Setapp\ObjktCom_v2::Bigmap_AuctionsEnglish:    return self::PackDealRecord_ObjktComV2_AuctionsEnglish($bigmap, $value);
             case Setapp\ObjktCom_v2::Bigmap_AuctionsDutch:      return self::PackDealRecord_ObjktComV2_AuctionsDutch($bigmap, $value);
@@ -94,6 +98,11 @@ class MarketDeals extends AbstractEntity
             case Setapp\ObjktCom_v3::Bigmap_Swaps:              return self::PackDealRecord_ObjktComV3_Swaps($bigmap, $value);
             case Setapp\ObjktCom_v3::Bigmap_AuctionsEnglish:    return self::PackDealRecord_ObjktComV3_AuctionsEnglish($bigmap, $value);
             case Setapp\ObjktCom_v3::Bigmap_AuctionsDutch:      return self::PackDealRecord_ObjktComV3_AuctionsDutch($bigmap, $value);
+
+            // v4 is objkt.com's marketplace v6.2 / english v6.1: the values carry the same keys as v3's, plus
+            // nullable extras these packers do not read, so they go through the v3 packers unchanged.
+            case Setapp\ObjktCom_v4::Bigmap_Swaps:              return self::PackDealRecord_ObjktComV3_Swaps($bigmap, $value);
+            case Setapp\ObjktCom_v4::Bigmap_AuctionsEnglish:    return self::PackDealRecord_ObjktComV3_AuctionsEnglish($bigmap, $value);
 
             case Setapp\Teia::Bigmap_Swaps:                    return self::PackDealRecord_Teia_Swaps($bigmap, $value);
 

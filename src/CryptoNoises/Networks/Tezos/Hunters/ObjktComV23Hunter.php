@@ -12,9 +12,16 @@ use Exception;
 
 abstract class ObjktComV23Hunter extends AbstractHunter
 {
+    protected const kHunterVersion4                 = '4.0';
     protected const kHunterVersion3                 = '3.0';
     protected const kHunterVersion3a                = '3.alpha';
     protected const kHunterVersion2                 = '2.0';
+
+    // objkt.com's "marketplace v6.2" and "english auction v6.1": same parameters, bigmap values and fee wallet
+    // as v3, so they run through the same handlers. See Setapp\ObjktCom_v4 for the version-name mapping.
+    protected const kMarketplaceKTID_v4             = Setapp\ObjktCom_v4::MarketplaceKTID;
+    protected const kEnglishAuctionsKTID_v4         = Setapp\ObjktCom_v4::EnglishAuctionsKTID;
+    protected const kMarketplaceFeeWallet_v4        = Setapp\ObjktCom_v4::MarketplaceFeeWallet;
 
     protected const kMarketplaceKTID_v3             = Setapp\ObjktCom_v3::MarketplaceKTID;
     protected const kEnglishAuctionsKTID_v3         = Setapp\ObjktCom_v3::EnglishAuctionsKTID;
@@ -47,6 +54,11 @@ abstract class ObjktComV23Hunter extends AbstractHunter
     {
         switch ($contract)
         {
+            case self::kMarketplaceKTID_v4:
+            case self::kEnglishAuctionsKTID_v4:
+                $this->kHunterVersion = self::kHunterVersion4;
+                break;
+
             case self::kMarketplaceKTID_v3:
             case self::kEnglishAuctionsKTID_v3:
             case self::kDutchAuctionsKTID_v3:
@@ -70,6 +82,13 @@ abstract class ObjktComV23Hunter extends AbstractHunter
 
         switch ($this->kHunterVersion)
         {
+            case self::kHunterVersion4:
+                $this->kMarketplaceKTID             = self::kMarketplaceKTID_v4;
+                $this->kEnglishAuctionsKTID         = self::kEnglishAuctionsKTID_v4;
+                $this->kDutchAuctionsKTID           = null;             // objkt.com's current dutch is v3's
+                $this->kMarketplaceFeeWallet        = self::kMarketplaceFeeWallet_v4;
+                break;
+
             case self::kHunterVersion3:
                 $this->kMarketplaceKTID             = self::kMarketplaceKTID_v3;
                 $this->kEnglishAuctionsKTID         = self::kEnglishAuctionsKTID_v3;
@@ -100,6 +119,7 @@ abstract class ObjktComV23Hunter extends AbstractHunter
     public static function GetAllMarketContracts(): array
     {
         return [
+            self::kMarketplaceKTID_v4, self::kEnglishAuctionsKTID_v4,
             self::kMarketplaceKTID_v3, self::kEnglishAuctionsKTID_v3, self::kDutchAuctionsKTID_v3,
             self::kMarketplaceKTID_v3a,
             self::kMarketplaceKTID_v2, self::kEnglishAuctionsKTID_v2, self::kDutchAuctionsKTID_v2,
@@ -318,7 +338,8 @@ abstract class ObjktComV23Hunter extends AbstractHunter
         if (empty($shares))
             return 0;
 
-        if ($this->kHunterVersion == self::kHunterVersion3 || $this->kHunterVersion == self::kHunterVersion3a)
+        if ($this->kHunterVersion == self::kHunterVersion4 || $this->kHunterVersion == self::kHunterVersion3
+            || $this->kHunterVersion == self::kHunterVersion3a)
             return array_sum(array_values($shares));
 
         if ($this->kHunterVersion == self::kHunterVersion2)
@@ -332,7 +353,8 @@ abstract class ObjktComV23Hunter extends AbstractHunter
         if (empty($shares))
             return null;
 
-        if ($this->kHunterVersion == self::kHunterVersion3 || $this->kHunterVersion == self::kHunterVersion3a)
+        if ($this->kHunterVersion == self::kHunterVersion4 || $this->kHunterVersion == self::kHunterVersion3
+            || $this->kHunterVersion == self::kHunterVersion3a)
         {
             $topAddr  = null;
             $topShare = null;

@@ -177,6 +177,20 @@ trait AbstractBot_Notification_Events
             $thresholdScope = null;
         }
         #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        # Comments carry no amount, so no threshold can apply to them
+        else if ($notificationType == Enum\NotificationType::TokenComment)
+        {
+            $notifyFilter   = OptionsNotifier::kNotify_TokenComment;
+            $notification   = Notification\Transaction\NftComment::I($user);
+            $thresholdScope = null;
+        }
+        else if ($notificationType == Enum\NotificationType::TokenCommentReply)
+        {
+            $notifyFilter   = OptionsNotifier::kNotify_TokenComment;
+            $notification   = Notification\Transaction\NftCommentReply::I($user);
+            $thresholdScope = null;
+        }
+        #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # Token Receive/Send may be as: { coin | nft | undefined-token }
         else if ($notificationType == Enum\NotificationType::TokenReceive)
         {
@@ -471,6 +485,9 @@ trait AbstractBot_Notification_Events
             case Enum\NotificationType::TokenSend:
             case Enum\NotificationType::TokenReceive:
             case Enum\NotificationType::TokenUpdateMetadata:
+
+            case Enum\NotificationType::TokenComment:
+            case Enum\NotificationType::TokenCommentReply:
                 break;
 
             default:
@@ -518,7 +535,9 @@ trait AbstractBot_Notification_Events
 
         if ($notificationType == Enum\NotificationType::TokenMint ||
             $notificationType == Enum\NotificationType::TokenList ||
-            $notificationType == Enum\NotificationType::TokenUpdateMetadata)
+            $notificationType == Enum\NotificationType::TokenUpdateMetadata ||
+            $notificationType == Enum\NotificationType::TokenComment ||
+            $notificationType == Enum\NotificationType::TokenCommentReply)
         {
             if ($tokenEntity && $tokenEntity->isNftToken())
             {
