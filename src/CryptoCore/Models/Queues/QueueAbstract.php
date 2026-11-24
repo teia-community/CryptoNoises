@@ -32,6 +32,9 @@ abstract class QueueAbstract extends VssModel
     public string $selectMode                   = self::kSELECT_MODE_Normal;
     public int $maxTryCount                     = 16;
 
+    /** How often a claim that lost a deadlock is retried before the worker is told the queue is empty */
+    const kCLAIM_DEADLOCK_RETRIES               = 4;
+
     abstract public function tableName(): string;
 
     abstract protected function dbConnection(): VssDb;
@@ -67,9 +70,47 @@ abstract class QueueAbstract extends VssModel
      * freely (docker compose up --scale), and threadIndex / threadCount are only kept for callers that still pass
      * them. Needs MySQL 8.0+ or MariaDB 10.6+.
      *
+     * A deadlock (SQLSTATE 40001) is a normal outcome of concurrent claims, not a failure: InnoDB rolls one
+     * transaction back and the right answer is to re-issue it. Letting it out of here was expensive - the
+     * exception reached the Fat-Free error handler, which ends the process, and "restart: always" started the
+     * worker straight back into the same contention. Ten replicas of one queue turned that into a restart loop
+     * that burned the host's CPU. Retries are bounded; after them the worker is told the queue is empty and
+     * idles, which costs one pass rather than a process.
+     *
      * @return array|null the claimed task, already in state 'syncing', or null when the queue has nothing ready
      */
     public function claimNextTask(int $threadIndex = 0, int $threadCount = 0): ?array
+    {
+        for ($attempt = 0; ; $attempt++)
+        {
+            try
+            {
+                return $this->claimNextTaskOnce($threadIndex, $threadCount);
+            }
+            catch (\Throwable $e)
+            {
+                if ($attempt >= self::kCLAIM_DEADLOCK_RETRIES || !self::IsRetryableLockError($e))
+                    throw $e;
+
+                // Sleep a random slice so the losers of one deadlock do not line up and collide again
+                usleep(random_int(10000, 50000) * ($attempt + 1));
+            }
+        }
+    }
+
+    /**
+     * True for the two errors that mean "try the transaction again": 1213 deadlock and 1205 lock wait timeout.
+     */
+    public static function IsRetryableLockError(\Throwable $e): bool
+    {
+        $message = $e->getMessage();
+
+        return str_contains($message, 'SQLSTATE[40001]')
+            || str_contains($message, '1213 Deadlock')
+            || str_contains($message, '1205 Lock wait timeout');
+    }
+
+    private function claimNextTaskOnce(int $threadIndex, int $threadCount): ?array
     {
         $db = $this->dbConnection();
 

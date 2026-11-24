@@ -371,7 +371,7 @@ CREATE TABLE IF NOT EXISTS `queue_domains_expiry` (
   PRIMARY KEY (`queue_task_id`),
   KEY `ts_activate` (`ts_activate`),
   KEY `iteration` (`iteration`),
-  KEY `state` (`state`)
+  KEY `claim` (`state`,`priority`,`iteration`,`queue_task_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `queue_domains_expiry__done` (

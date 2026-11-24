@@ -476,7 +476,7 @@ CREATE TABLE IF NOT EXISTS `queue_contracts` (
   PRIMARY KEY (`queue_task_id`),
   KEY `ts_activate` (`ts_activate`),
   KEY `iteration` (`iteration`),
-  KEY `state` (`state`)
+  KEY `claim` (`state`,`priority`,`iteration`,`queue_task_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `queue_contracts__done` (
@@ -540,7 +540,7 @@ CREATE TABLE IF NOT EXISTS `queue_ipfs_primary` (
   UNIQUE KEY `media_uri` (`media_uri`),
   KEY `ts_activate` (`ts_activate`),
   KEY `iteration` (`iteration`),
-  KEY `state` (`state`)
+  KEY `claim` (`state`,`priority`,`iteration`,`queue_task_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `queue_ipfs_primary__done` (
@@ -603,7 +603,7 @@ CREATE TABLE IF NOT EXISTS `queue_ipfs_secondary` (
   PRIMARY KEY (`queue_task_id`),
   KEY `ts_activate` (`ts_activate`),
   KEY `iteration` (`iteration`),
-  KEY `state` (`state`)
+  KEY `claim` (`state`,`priority`,`iteration`,`queue_task_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `queue_ipfs_secondary__done` (
@@ -666,7 +666,7 @@ CREATE TABLE IF NOT EXISTS `queue_profiles` (
   UNIQUE KEY `profile_type` (`profile_type`,`source_adid`),
   KEY `ts_activate` (`ts_activate`),
   KEY `iteration` (`iteration`),
-  KEY `state` (`state`)
+  KEY `claim` (`state`,`priority`,`iteration`,`queue_task_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `queue_profiles__done` (
@@ -727,7 +727,7 @@ CREATE TABLE IF NOT EXISTS `queue_tokens_detected` (
   PRIMARY KEY (`queue_task_id`),
   KEY `ts_activate` (`ts_activate`),
   KEY `iteration` (`iteration`),
-  KEY `state` (`state`)
+  KEY `claim` (`state`,`priority`,`iteration`,`queue_task_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `queue_tokens_detected__done` (
@@ -792,7 +792,7 @@ CREATE TABLE IF NOT EXISTS `queue_tokens_events` (
   UNIQUE KEY `unique_record` (`contract_adid`,`token_unid`,`scope`,`event_type`),
   KEY `ts_activate` (`ts_activate`),
   KEY `iteration` (`iteration`),
-  KEY `state` (`state`),
+  KEY `claim` (`state`,`priority`,`iteration`,`queue_task_id`),
   KEY `scope` (`scope`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -859,7 +859,7 @@ CREATE TABLE IF NOT EXISTS `queue_tokens_metadata` (
   PRIMARY KEY (`queue_task_id`),
   KEY `ts_activate` (`ts_activate`),
   KEY `iteration` (`iteration`),
-  KEY `state` (`state`)
+  KEY `claim` (`state`,`priority`,`iteration`,`queue_task_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `queue_tokens_metadata__done` (
@@ -920,7 +920,7 @@ CREATE TABLE IF NOT EXISTS `queue_tokens_metadata_merge` (
   UNIQUE KEY `contract_adid` (`contract_adid`,`token_unid`),
   KEY `ts_activate` (`ts_activate`),
   KEY `iteration` (`iteration`),
-  KEY `state` (`state`)
+  KEY `claim` (`state`,`priority`,`iteration`,`queue_task_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `queue_tokens_metadata_merge__done` (
