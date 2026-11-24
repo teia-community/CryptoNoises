@@ -489,6 +489,45 @@ While we were in there, `kSELECT_MODE_Normal` lost its `ORDER BY priority, itera
 there to stop parallel workers picking the same row, which `SKIP LOCKED` now does properly, and sorting a whole
 backlog at random is expensive. The order is `priority, iteration, queue_task_id`.
 
+#### The `claim` index
+
+`SKIP LOCKED` makes concurrent claims *correct*, not cheap. The claim reads
+`WHERE state = 'idle' AND ts_activate <= NOW() ORDER BY priority, iteration, queue_task_id LIMIT 1`, and the queue
+tables only had single-column keys on `state`, `ts_activate` and `iteration`. None of them can deliver that order,
+so MySQL read every idle row and sorted the lot to return one - under `FOR UPDATE`, which means it also *locked*
+every row it read. Measured on a queue holding 62k rows:
+
+| Plan | Rows read | Time |
+|------|-----------|------|
+| single-column `state` key, `Using filesort` | 61,965 | 185 ms |
+| composite `claim` key | 1 | 0.6 ms |
+
+Ten replicas each locking ~62,000 rows and then updating one by primary key deadlock constantly. A deadlock
+(SQLSTATE 40001) reached the Fat-Free error handler, which ends the process; `restart: always` started the worker
+straight back into the same contention, and the pool turned into a restart loop that pinned the host's CPU.
+
+Two changes. Every claimable queue table gained `KEY claim (state, priority, iteration, queue_task_id)` - which has
+`state` leftmost, so it replaces the plain `state` key rather than joining it - and `claimNextTask()` retries a lost
+deadlock a bounded number of times before reporting the queue as empty, because 1213 is a normal outcome of
+concurrency and must never be fatal.
+
+Existing installs need the index added by hand (the schema files only run on a fresh database):
+
+```sql
+ALTER TABLE `cryptonoises_tezos`.`queue_contracts`             DROP INDEX `state`, ADD KEY `claim` (`state`,`priority`,`iteration`,`queue_task_id`);
+ALTER TABLE `cryptonoises_tezos`.`queue_ipfs_primary`          DROP INDEX `state`, ADD KEY `claim` (`state`,`priority`,`iteration`,`queue_task_id`);
+ALTER TABLE `cryptonoises_tezos`.`queue_ipfs_secondary`        DROP INDEX `state`, ADD KEY `claim` (`state`,`priority`,`iteration`,`queue_task_id`);
+ALTER TABLE `cryptonoises_tezos`.`queue_profiles`              DROP INDEX `state`, ADD KEY `claim` (`state`,`priority`,`iteration`,`queue_task_id`);
+ALTER TABLE `cryptonoises_tezos`.`queue_tokens_detected`       DROP INDEX `state`, ADD KEY `claim` (`state`,`priority`,`iteration`,`queue_task_id`);
+ALTER TABLE `cryptonoises_tezos`.`queue_tokens_events`         DROP INDEX `state`, ADD KEY `claim` (`state`,`priority`,`iteration`,`queue_task_id`);
+ALTER TABLE `cryptonoises_tezos`.`queue_tokens_metadata`       DROP INDEX `state`, ADD KEY `claim` (`state`,`priority`,`iteration`,`queue_task_id`);
+ALTER TABLE `cryptonoises_tezos`.`queue_tokens_metadata_merge` DROP INDEX `state`, ADD KEY `claim` (`state`,`priority`,`iteration`,`queue_task_id`);
+ALTER TABLE `cryptonoises`.`queue_domains_expiry`              DROP INDEX `state`, ADD KEY `claim` (`state`,`priority`,`iteration`,`queue_task_id`);
+```
+
+`queue_wallets_sync` is deliberately not in that list: it has no `state` or `iteration` column and is not claimed
+through `claimNextTask()`.
+
 ### Pausing a command
 
 `command-lock.<command>` in the `config` table still works, but it used to be read once per cron invocation - so
