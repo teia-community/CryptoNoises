@@ -38,12 +38,16 @@ class Downloader
 
             // The cache directory is not created anywhere else on this path (unlike setCacheFileId()), so on a
             // fresh install every write failed with "No such file or directory".
+            //
+            // mkdir() is suppressed and re-checked because several workers share this directory: two of them
+            // creating it at the same time makes the loser warn "File exists", and Fat-Free turns that warning
+            // into a fatal. The re-check still distinguishes a lost race (directory now exists, carry on) from a
+            // real failure such as a permission problem or a full disk - and this is only a cache, so a real
+            // failure skips the write instead of killing the job.
             $cacheDir = dirname($cacheFullPath);
 
-            if (!is_dir($cacheDir))
-                mkdir($cacheDir, 0755, true);
-
-            file_put_contents($cacheFullPath, $data);
+            if (is_dir($cacheDir) || @mkdir($cacheDir, 0755, true) || is_dir($cacheDir))
+                file_put_contents($cacheFullPath, $data);
         }
 
         return $data;
@@ -72,8 +76,10 @@ class Downloader
 
     public function setCacheFileId(string $cachePath, string $cacheFileId): void
     {
+        // Suppressed and re-checked: workers share this directory, see GetDirect(). A real failure is left to
+        // surface on the write that follows, as it did before.
         if (!is_dir($cachePath))
-            mkdir($cachePath, 0755, true);
+            @mkdir($cachePath, 0755, true);
 
         $this->cachePath = $cachePath;
         $this->cacheFileId = $cacheFileId;
@@ -101,8 +107,10 @@ class Downloader
 
     public function save(): bool
     {
+        // Suppressed and re-checked: workers share this directory, see GetDirect(). A real failure is left to
+        // surface on the write that follows, as it did before.
         if (!is_dir($this->savePath))
-            mkdir($this->savePath, 0755, true);
+            @mkdir($this->savePath, 0755, true);
 
         $savePathName = $this->getFullPathName();
 
