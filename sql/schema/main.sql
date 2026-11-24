@@ -341,6 +341,7 @@ CREATE TABLE IF NOT EXISTS `options_notifier` (
   `notify_token_mint` enum('yes','no') DEFAULT NULL,
   `notify_token_list` enum('yes','no') DEFAULT NULL,
   `notify_token_update_metadata` enum('yes','no') DEFAULT NULL,
+  `notify_token_comment` enum('yes','no') DEFAULT NULL,
   `notify_auction` enum('yes','no') DEFAULT NULL,
   `notify_domains` enum('yes','no') DEFAULT NULL,
   `threshold_transaction` bigint unsigned DEFAULT NULL,

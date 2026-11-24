@@ -25,6 +25,10 @@ class OptionsNotifier
     const kNotify_TokenList                     = 'notify_token_list';
     const kNotify_TokenUpdateMetadata           = 'notify_token_update_metadata';
 
+    // Covers both a comment on your token and a reply to your comment: one switch, because somebody who does
+    // not want to hear about comments does not want half of them either.
+    const kNotify_TokenComment                  = 'notify_token_comment';
+
     const kNotify_Domains                       = 'notify_domains';
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -111,6 +115,7 @@ class OptionsNotifier
         $this->addType(OptionsNotifier::kNotify_Auction,                true);
 
         $this->addType(OptionsNotifier::kNotify_TokenUpdateMetadata,    true);
+        $this->addType(OptionsNotifier::kNotify_TokenComment,           true);
         $this->addType(OptionsNotifier::kNotify_Domains,                true);
     }
 
@@ -129,6 +134,7 @@ class OptionsNotifier
         $this->addType(OptionsNotifier::kNotify_Auction,                true);
 
         $this->addType(OptionsNotifier::kNotify_TokenUpdateMetadata,    true);
+        $this->addType(OptionsNotifier::kNotify_TokenComment,           true);
     }
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -152,6 +158,7 @@ class OptionsNotifier
             case OptionsNotifier::kNotify_TokenMint:            $title = Phrase::I()->filterTypeTokenMint; break;
             case OptionsNotifier::kNotify_TokenList:            $title = Phrase::I()->filterTypeTokenList; break;
             case OptionsNotifier::kNotify_TokenUpdateMetadata:  $title = Phrase::I()->filterTypeTokenUpdateMetadata; break;
+            case OptionsNotifier::kNotify_TokenComment:         $title = Phrase::I()->filterTypeTokenComment; break;
 
             case OptionsNotifier::kNotify_Domains:              $title = Phrase::I()->filterTypeDomainsEvents; break;
 

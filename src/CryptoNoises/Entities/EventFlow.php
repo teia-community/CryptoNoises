@@ -182,6 +182,9 @@ class EventFlow
             case Enum\EventFlowType::TokenMintExpense_Ticket:       # no grouping: each fx(hash) mint shows its own iteration index
             case Enum\EventFlowType::TokenUpdateMetadata:
 
+            case Enum\EventFlowType::TokenComment:
+            case Enum\EventFlowType::TokenCommentReply:
+
             case Enum\EventFlowType::TokenList:
             case Enum\EventFlowType::AuctionStart:
             case Enum\EventFlowType::AuctionEndFailed:
@@ -518,6 +521,20 @@ class EventFlow
             $this->pushEventNotificationByOwnerAdid($targetAdid, $targetAddress, $eventFlowId, NotificationType::TokenUpdateMetadata);
 
             $this->pushEventNotificationForUserIds($this->broadcastChannels_userIds, $eventFlowId, NotificationType::TokenUpdateMetadata, Models\EventsNotifications::kPRIORITY_INDEX_Background);
+        }
+
+        //===[ COMMENT EVENTS ]=========================================================================================
+
+        // The hunter already worked out who the comment is addressed to - the artist, or the author of the
+        // comment being answered - and put them in target_address, so there is one recipient either way.
+        else if ($this->event_type == Enum\EventFlowType::TokenComment)
+        {
+            $this->pushEventNotificationByOwnerAdid($targetAdid, $targetAddress, $eventFlowId, NotificationType::TokenComment);
+        }
+
+        else if ($this->event_type == Enum\EventFlowType::TokenCommentReply)
+        {
+            $this->pushEventNotificationByOwnerAdid($targetAdid, $targetAddress, $eventFlowId, NotificationType::TokenCommentReply);
         }
 
         //===[ LIST/UNLIST EVENTS ]=====================================================================================

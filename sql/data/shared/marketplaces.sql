@@ -144,6 +144,7 @@ INSERT INTO `marketplaces` (`marketplace_address`, `collection_address`, `create
   ('KT1FG63hhFtMEEEtmBSX2vuFmP87t9E7Ab4t', '', 'auto', 'QuipuSwap WRAP', NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', '2022-07-04 12:18:38'),
   ('KT1FHiJmJUgZMPtv5F8M4ZEa6cb1D9Lf758T', '', 'auto', 'QuipuSwap crDAO', NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', '2022-07-04 07:14:08'),
   ('KT1FSSkHtNJdH4eJQJEzsX78sVQ5p5ZwUqVX', '', 'auto', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', '2024-03-11 08:39:23'),
+  ('KT1FXFxUcZvne1ApoSaeZfvmDR73u2BsuFUP', '', 'manual', 'teia·art comments', 'token/teia', NULL, NULL, NULL, NULL, 'user/teia', 'collection/teia', 'Teia token comments', '2026-11-24 00:00:00'),
   ('KT1Faa4P1xziMwiX8fipFraTiUQ5D91Hqpn7', '', 'auto', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', '2022-09-20 13:39:41'),
   ('KT1FbYwEWU8BTfrvNoL5xDEC5owsDxv9nqKT', '', 'auto', 'QuipuSwap Ctez', NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', '2022-06-29 11:39:53'),
   ('KT1FeN3VthNnkgjfL5gVpBjyaj1LDKoxDepe', '', 'auto', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', '2023-12-12 22:09:25'),
