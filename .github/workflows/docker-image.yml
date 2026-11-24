@@ -105,6 +105,18 @@ jobs:
           done
           if [ -n "$missing" ]; then echo "missing extensions:$missing"; exit 1; fi
 
+          echo "Every PHP file in the image must parse on this PHP version"
+          run bash -c '
+              cd /opt/cryptonoises
+              find src config commands public-api public-app -name "*.php" -print0 \
+                  | xargs -0 -n1 -P4 php -l \
+                  | grep -v "^No syntax errors detected" > /tmp/lint.out || true
+              if [ -s /tmp/lint.out ]; then cat /tmp/lint.out; exit 1; fi
+          '
+
+          echo "Every project class must load through the autoloader without raising a diagnostic"
+          run php /opt/cryptonoises/docker/bin/check-classes.php
+
           echo "Both CLI entry points should list their commands"
           run commands/run-tezos | grep -q '/blockchain/transaction/sync-new'
           run commands/run       | grep -q '/telegram/notifier/events-flow'
