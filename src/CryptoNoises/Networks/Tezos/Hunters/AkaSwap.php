@@ -21,6 +21,11 @@ abstract class AkaSwap extends AbstractHunter
     public const kAkaDaoKTID                        = 'KT1AM3PV1cwmGRw28DVTgsjjsjHvmL6z4rGh';
 
     public const kMarketplaceKTID                   = 'KT1Dn3sambs7KZGW88hH2obZeSzfmCmGvpFo'; # akaMetaverse V2.1
+
+    // The two swap contracts before V2.1. V2 stores a swap exactly as V2.1 does; V1 predates multi-FA2 support,
+    // so it names its fields after akaOBJ and only ever traded kTokensKTID.
+    public const kMarketplaceKTID_v2                = 'KT1Qieo8hJWj2rHFfe8BRqnMHXYga9av89GJ'; # akaSwap V2
+    public const kMarketplaceKTID_v1                = 'KT1HGL8vx7DP4xETVikL4LUYvFxSV19DxdFN'; # akaSwap V1
     public const kAuctionKTID                       = 'KT1B2BN4qgmtsaoLRhhnFVDNoTyybwTfdrE4'; # akaAuction V2
     public const kOfferKTID                         = 'KT1J2C7BsYNnSjQsGoyrSXShhYGkrDDLVGDd'; # akaOffer
 
@@ -30,7 +35,8 @@ abstract class AkaSwap extends AbstractHunter
 
     public static function GetAllMarketContracts(): array
     {
-        return [self::kMarketplaceKTID, self::kAuctionKTID, self::kOfferKTID];
+        return [self::kMarketplaceKTID, self::kMarketplaceKTID_v2, self::kMarketplaceKTID_v1,
+                self::kAuctionKTID, self::kOfferKTID];
     }
 
     public static function GetMarketplaceContractByTokenContract(string $tokensContract): ?string

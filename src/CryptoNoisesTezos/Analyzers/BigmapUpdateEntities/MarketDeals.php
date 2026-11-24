@@ -66,7 +66,9 @@ class MarketDeals extends AbstractEntity
 
         switch ($bigmap)
         {
-            case  55662:    return self::PackDealRecord_AkaSwap_Swaps($bigmap, $value);                                 # KT1Dn3sambs7KZGW88hH2obZeSzfmCmGvpFo / swaps
+            case Setapp\AkaSwap::Bigmap_Swaps_v21:              return self::PackDealRecord_AkaSwap_Swaps($bigmap, $value);
+            case Setapp\AkaSwap::Bigmap_Swaps_v2:               return self::PackDealRecord_AkaSwap_Swaps($bigmap, $value);
+            case Setapp\AkaSwap::Bigmap_Swaps_v1:               return self::PackDealRecord_AkaSwap_Swaps_v1($bigmap, $value);
             case Setapp\AkaSwap::Bigmap_Auctions:              return self::PackDealRecord_AkaSwap_Auctions($bigmap, $value);
 
             case 113273:    return self::PackDealRecord_EightBidou_Swaps($bigmap, $value);                              # KT1BvWGFENd4CXW5F3u4n31xKfJhmBGipoqF / swap_list
@@ -78,6 +80,10 @@ class MarketDeals extends AbstractEntity
             case Setapp\FxHash_v2::Bigmap_Swaps:                return self::PackDealRecord_FxHashV2_Swaps($bigmap, $value);
 
             case Setapp\HicEtNunc::Bigmap_Swaps:               return self::PackDealRecord_HicEtNunc_Swaps($bigmap, $value);
+            case Setapp\HicEtNunc::Bigmap_Swaps_v1:            return self::PackDealRecord_HicEtNunc_Swaps($bigmap, $value);
+
+            // 8scribo stores a swap in the hic et nunc shape, plus the fa2 it trades
+            case Setapp\EightScribo::Bigmap_Swaps:             return self::PackDealRecord_HicEtNunc_Swaps($bigmap, $value);
 
             case Setapp\Kalamint::Bigmap_Tokens:               return self::PackDealRecord_Kalamint_Swaps($bigmap, $value);
 

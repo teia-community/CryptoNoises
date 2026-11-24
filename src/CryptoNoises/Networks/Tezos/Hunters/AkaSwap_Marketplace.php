@@ -13,7 +13,9 @@ class AkaSwap_Marketplace extends AkaSwap
 {
     public function parseTransaction(array $recInit, array $subRecords): bool
     {
-        if ($recInit['target'] != self::kMarketplaceKTID)
+        if ($recInit['target'] != self::kMarketplaceKTID &&
+            $recInit['target'] != self::kMarketplaceKTID_v2 &&
+            $recInit['target'] != self::kMarketplaceKTID_v1)
             return false;
 
         if ($recInit['entrypoint'] == 'swap')
@@ -34,10 +36,17 @@ class AkaSwap_Marketplace extends AkaSwap
         {
             $valueSwap = $recInit['parameter']['value'];
 
-            if (!self::IsSupportedTokensContract($valueSwap['token_fa2']))
-                throw new Exception("Unknown token-address #{$valueSwap['token_fa2']}");
+            // V1 has no token_fa2 and names its fields after akaOBJ: it was written before akaswap traded more
+            // than its own FA2, so the contract that was called tells us which layout to read.
+            $isV1 = $recInit['target'] == self::kMarketplaceKTID_v1;
 
-            if ($valueSwap['xtz_per_token'] == 0)
+            $tokenContract = $isV1 ? self::kTokensKTID        : ($valueSwap['token_fa2'] ?? null);
+            $priceXtz      = $isV1 ? ($valueSwap['xtz_per_akaOBJ'] ?? null) : ($valueSwap['xtz_per_token'] ?? null);
+
+            if (!self::IsSupportedTokensContract($tokenContract))
+                throw new Exception("Unknown token-address #$tokenContract");
+
+            if ($priceXtz == 0 || $priceXtz === null)
                 throw new Exception("XTZ price is ZERO");
 
             //----------------------------------------------------------------------------------------------------------
@@ -48,7 +57,7 @@ class AkaSwap_Marketplace extends AkaSwap
             $listing->tokenAddress      = $transfer->tokenAddress;
             $listing->tokenId           = $transfer->tokenId;
 
-            $listing->price             = $valueSwap['xtz_per_token'];
+            $listing->price             = $priceXtz;
             $listing->currency          = TezosNetwork::kCURRENCY_ID;
             $listing->quantity          = $transfer->quantity;
 

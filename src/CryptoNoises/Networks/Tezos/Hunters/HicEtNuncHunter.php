@@ -2,6 +2,7 @@
 
 namespace CryptoNoises\Networks\Tezos\Hunters;
 
+use CryptoCore\Setapp;
 use CryptoNoises\Entities\TokenActions;
 use CryptoNoises\Networks\Tezos\Markets\HicEtNunc;
 use CryptoNoises\Networks\Tezos\TezosNetwork;
@@ -10,8 +11,11 @@ class HicEtNuncHunter extends AbstractHunter
 {
     public const kTokensKTID                        = 'KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton';   # hic et nunc NFTs
 
-    // hic et nunc Minter (not used here): 'KT1Hkg5qeNhfwpKW4fXvq7HGZB9z2EnmCCA9'
     public const kMarketplaceKTID                   = 'KT1HbQepzV1nVGg8QVznG7z4RcHseD5kwqBn';   # hic et nunc Marketplace
+
+    // The first marketplace, which also minted. mint_OBJKT is left to the token analyzer that already reads it;
+    // only its trading entrypoints are handled here.
+    public const kMarketplaceKTID_v1                = Setapp\HicEtNunc::MarketplaceKTID_v1;
 
     public const kMarketplaceFeeWallet              = 'tz1UBZUkXpKGhYsP5KtzDNqLLchwF4uHrGjw';
 
@@ -19,7 +23,7 @@ class HicEtNuncHunter extends AbstractHunter
 
     public static function GetAllMarketContracts(): array
     {
-        return [self::kMarketplaceKTID];
+        return [self::kMarketplaceKTID, self::kMarketplaceKTID_v1];
     }
 
     public static function GetMarketplaceContractByTokenContract(string $tokensContract): ?string
@@ -31,7 +35,8 @@ class HicEtNuncHunter extends AbstractHunter
 
     public function parseTransaction(array $recInit, array $subRecords): bool
     {
-        if ($recInit['target'] != self::kMarketplaceKTID)
+        if ($recInit['target'] != self::kMarketplaceKTID &&
+            $recInit['target'] != self::kMarketplaceKTID_v1)
             return false;
 
         if ($recInit['entrypoint'] == 'collect')
@@ -63,14 +68,14 @@ class HicEtNuncHunter extends AbstractHunter
         // 2) entrypoint = 'transfer'
         // So need to fix this record as "free-transfer" item
 
-        return $this->analyzeStdTokenFreePurchaseBlock($recInit, $subRecords, function($initParams): ?TokenActions\Swap
+        return $this->analyzeStdTokenFreePurchaseBlock($recInit, $subRecords, function($initParams) use ($recInit): ?TokenActions\Swap
         {
             $swapId = $initParams['value'] ?? null;
 
             if ($swapId === null)
                 return null;
 
-            return HicEtNunc::GetSwapDetails($swapId);
+            return HicEtNunc::GetSwapDetails($swapId, $recInit['target']);
         });
     }
 
@@ -88,8 +93,11 @@ class HicEtNuncHunter extends AbstractHunter
             $listing->currency          = TezosNetwork::kCURRENCY_ID;
             $listing->quantity          = $recValue['objkt_amount'];
 
-            $listing->creator           = $recValue['creator'];
-            $listing->royalty_d4        = $recValue['royalties'] * 10; // Incoming value for 25% is '250' => need convert to 2500
+            // The first marketplace stored neither of these
+            $listing->creator           = $recValue['creator'] ?? null;
+            $listing->royalty_d4        = isset($recValue['royalties'])
+                ? $recValue['royalties'] * 10   // Incoming value for 25% is '250' => need convert to 2500
+                : null;
 
             return $listing;
         });
