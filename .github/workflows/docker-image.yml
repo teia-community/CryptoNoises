@@ -1,0 +1,162 @@
+# Builds the application image and publishes it to GitHub Container Registry.
+#
+# The whole stack runs one image (compose.yaml also uses stock mysql and nginx), so there is one image to build:
+#   ghcr.io/<owner>/cryptonoises
+#
+# Tags:
+#   main          every push to main
+#   latest        same as main, for anyone who expects it
+#   sha-<short>   immutable, for pinning a deployment to an exact build
+#   v1.2.3 / 1.2  from a v* git tag, if the project ever gets releases
+#
+# Pull requests build but do not push, so a broken Dockerfile is caught before it reaches the registry.
+
+name: Docker image
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    paths:
+      # Anything that lands in the image, plus this workflow
+      - 'docker/**'
+      - 'src/**'
+      - 'commands/**'
+      - 'public-api/**'
+      - 'public-app/**'
+      - 'config/**'
+      - 'sql/**'
+      - 'bin/**'
+      - composer.json
+      - composer.lock
+      - .dockerignore
+      - .github/workflows/docker-image.yml
+  workflow_dispatch:
+
+concurrency:
+  # A newer push to the same branch makes an in-flight build pointless
+  group: docker-image-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/cryptonoises
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Work out the tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=CryptoNoises
+            org.opencontainers.image.description=Telegram and Discord bots for Tezos wallet / NFT activity, with a Tezos indexer
+
+      # Build to a local image first and check it before anything is published
+      - name: Build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          load: true
+          tags: cryptonoises:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test the image
+        env:
+          # Enough to satisfy the required-credential check; nothing connects to a database here
+          CREDS: -e DB_USER=ci -e DB_PASSWORD=ci
+        run: |
+          set -euo pipefail
+
+          run() { docker run --rm $CREDS cryptonoises:ci "$@"; }
+
+          echo "::group::versions"
+          run php -v | head -1
+          docker run --rm --entrypoint magick      cryptonoises:ci -version | head -1
+          docker run --rm --entrypoint ffmpeg      cryptonoises:ci -version | head -1
+          docker run --rm --entrypoint supercronic cryptonoises:ci -version
+          echo "::endgroup::"
+
+          echo "Checking the PHP extensions the project needs"
+          missing=""
+          for ext in curl gd mbstring fileinfo json pdo pdo_mysql openssl zlib ctype iconv; do
+              run php -r "exit(extension_loaded('$ext') ? 0 : 1);" || missing="$missing $ext"
+          done
+          if [ -n "$missing" ]; then echo "missing extensions:$missing"; exit 1; fi
+
+          echo "Both CLI entry points should list their commands"
+          run commands/run-tezos | grep -q '/blockchain/transaction/sync-new'
+          run commands/run       | grep -q '/telegram/notifier/events-flow'
+
+          echo "The scheduler's crontab should be present and non-empty"
+          test "$(run bash -c "grep -cE '^[^#[:space:]]' /opt/cryptonoises/docker/cron/schedule.cron")" -gt 0
+
+          echo "ImageMagick must refuse SVG: token media is untrusted and the previews are public"
+          if docker run --rm --entrypoint magick cryptonoises:ci svg:/etc/hostname /tmp/x.png 2>/dev/null; then
+              echo "policy.xml is not in effect: ImageMagick rendered an SVG"; exit 1
+          fi
+
+          echo "A missing credential must fail loudly and non-zero"
+          if docker run --rm cryptonoises:ci commands/run-tezos >/dev/null 2>&1; then
+              echo "a missing DB_USER did not fail"; exit 1
+          fi
+
+      - name: Log in to ghcr.io
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Re-runs the build, but every layer is already in the gha cache, so this only pushes
+      - name: Push
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          provenance: mode=max
+          sbom: true
+
+      - name: Summary
+        if: github.event_name != 'pull_request'
+        run: |
+          {
+            echo "### Published"
+            echo
+            echo '```'
+            echo "${{ steps.meta.outputs.tags }}"
+            echo '```'
+            echo
+            echo "Deploy a specific build by pinning the \`sha-\` tag:"
+            echo
+            echo '```bash'
+            echo "CN_IMAGE=${{ env.IMAGE }}:sha-$(git rev-parse --short HEAD) docker compose up -d"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

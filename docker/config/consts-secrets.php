@@ -3,13 +3,21 @@
 // Docker: credentials come from the environment (see .env / compose.yaml).
 // The entrypoint installs this file as config/consts-secrets.php unless you mount your own.
 
-/** Required env var; dies with a clear message instead of connecting with an empty credential. */
+/**
+ * Required env var; fails with a clear message instead of connecting with an empty credential.
+ *
+ * Exits non-zero on purpose: die('message') exits 0, so a service started without its credentials would look
+ * like a clean exit and the restart policy would keep restarting it with nothing to show for it.
+ */
 $cnRequiredEnv = static function (string $name): string
 {
     $value = getenv($name);
 
     if ($value === false || $value === '')
-        die('Missing required environment variable ['.$name.']'.PHP_EOL);
+    {
+        fwrite(STDERR, 'Missing required environment variable ['.$name.']'.PHP_EOL);
+        exit(1);
+    }
 
     return $value;
 };

@@ -154,6 +154,40 @@ delegates (ghostscript and friends) are off, and the URL / SVG / MSL / MVG modul
 Debian 13 ships ImageMagick 7, whose binary is `magick`, so the container sets
 `TEZOS_CMD_IMAGEMAGICK_CONVERT=/usr/bin/magick`.
 
+### Published images
+
+The whole stack runs one image of its own (`db` and `nginx` are stock), and
+[`.github/workflows/docker-image.yml`](.github/workflows/docker-image.yml) publishes it to GitHub Container
+Registry on every push to `main`:
+
+| Tag | |
+|-----|---|
+| `sha-<short>` | immutable, one per commit - **use this for a deployment** |
+| `main` | moves with the default branch |
+| `latest` | the same as `main` |
+| `v1.2.3`, `1.2` | from a `v*` git tag, if the project ever gets releases |
+
+Pull requests build the image and run the smoke test but publish nothing, so a broken `Dockerfile` never reaches
+the registry. The smoke test checks more than "it builds": both CLI entry points list their commands, every PHP
+extension the project needs is loaded, ImageMagick refuses an SVG (so `policy.xml` is really in effect), and a
+missing database credential fails non-zero rather than looking like a clean exit.
+
+To run a published image instead of building, set `CN_IMAGE` and pull:
+
+```bash
+CN_IMAGE=ghcr.io/teia-community/cryptonoises:sha-abc1234
+docker compose pull
+docker compose up -d
+```
+
+Put `CN_IMAGE` in `.env` on a deployment host. Pinning the `sha-` tag rather than `main` means a redeploy is a
+deliberate change of one line, and a rollback is the previous value - the host never builds anything and never
+needs the source. Leave `CN_IMAGE` unset for development and the stack builds locally as before.
+
+The image is public if the repository is, so no registry login is needed to pull it. If the repository is private,
+the package inherits that and the host needs
+`docker login ghcr.io` with a token that has `read:packages`.
+
 ## Installation without Docker
 
 ```bash

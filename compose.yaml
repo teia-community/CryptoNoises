@@ -22,10 +22,14 @@ name: cryptonoises
 #-----------------------------------------------------------------------------------------------------------------------
 
 x-app: &app
+  # Built locally by default. Set CN_IMAGE to a published tag to run a built image instead:
+  #   CN_IMAGE=ghcr.io/teia-community/cryptonoises:sha-abc1234
+  #   docker compose pull && docker compose up -d
+  # .github/workflows/docker-image.yml publishes those on every push to main.
   build:
     context: .
     dockerfile: docker/Dockerfile
-  image: cryptonoises:local
+  image: ${CN_IMAGE:-cryptonoises:local}
   env_file: .env
   depends_on:
     db:
