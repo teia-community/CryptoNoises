@@ -172,21 +172,50 @@ the registry. The smoke test checks more than "it builds": both CLI entry points
 extension the project needs is loaded, ImageMagick refuses an SVG (so `policy.xml` is really in effect), and a
 missing database credential fails non-zero rather than looking like a clean exit.
 
-To run a published image instead of building, set `CN_IMAGE` and pull:
+## Deploying
+
+`compose.yaml` builds locally, which is what you want for development. A deployment adds a **site overlay** on
+top: [`docker-compose.site.example.yml`](docker-compose.site.example.yml), copied to `docker-compose.site.yml` and
+kept applied through `COMPOSE_FILE`. `compose.yaml` itself is never edited, so the repo and the host's local
+choices do not fight.
 
 ```bash
+cp .env.example .env
+cp docker-compose.site.example.yml docker-compose.site.yml
+```
+
+In `.env`:
+
+```ini
+COMPOSE_FILE=compose.yaml:docker-compose.site.yml
 CN_IMAGE=ghcr.io/teia-community/cryptonoises:sha-abc1234
+```
+
+Then the usual two commands, which now pull instead of building:
+
+```bash
 docker compose pull
 docker compose up -d
 ```
 
-Put `CN_IMAGE` in `.env` on a deployment host. Pinning the `sha-` tag rather than `main` means a redeploy is a
-deliberate change of one line, and a rollback is the previous value - the host never builds anything and never
-needs the source. Leave `CN_IMAGE` unset for development and the stack builds locally as before.
+What the overlay changes:
 
-The image is public if the repository is, so no registry login is needed to pull it. If the repository is private,
-the package inherits that and the host needs
-`docker login ghcr.io` with a token that has `read:packages`.
+- **No published ports.** Traefik terminates TLS and reaches the container over its external `web` network. This
+  is not only tidier - on a Traefik host the ports this stack defaults to are taken, because `8081` and `8082`
+  are Traefik's own dashboard and metrics entrypoints.
+- **Three hostnames**, each of which must resolve to the host before a certificate can be issued: the webhook
+  endpoint, the redirect endpoint, and the media previews. They have to match `APP_PUBLIC_API_URL`,
+  `APP_PUBLIC_DOMAIN` and `TEZOS_IPFS_LOCAL_BASE_URL` respectively, because those values are registered with
+  Telegram and embedded in bot messages.
+- **Lower worker counts**, sized for a machine that runs other things, with `worker-ipfs-secondary` at 0 since
+  nothing pushes to that queue.
+
+Pinning the `sha-` tag rather than `main` makes a redeploy a deliberate change of one line and a rollback the
+previous value. The host still needs these files - `compose.yaml`, `.env`, the nginx config and the two public
+document roots live there - but it never builds anything: the application comes from the registry.
+
+A newly created GHCR package is **private**, so the host needs `docker login ghcr.io` with a token that has
+`read:packages`, or the package has to be made public in the organisation's package settings.
 
 ## Installation without Docker
 

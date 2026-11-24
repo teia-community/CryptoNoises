@@ -1,0 +1,108 @@
+# Site overlay for a deployment. Copy to docker-compose.site.yml, edit, and keep it applied with
+# COMPOSE_FILE in .env - the same arrangement as the other stacks on the host:
+#
+#   cp docker-compose.site.example.yml docker-compose.site.yml
+#   # in .env:
+#   COMPOSE_FILE=compose.yaml:docker-compose.site.yml
+#   CN_IMAGE=ghcr.io/teia-community/cryptonoises:sha-abc1234
+#
+#   docker compose pull && docker compose up -d
+#
+# docker-compose.site.yml is gitignored, so local edits here never fight with the repo.
+#
+# compose.yaml stays untouched and keeps building locally for development; this overlay is what turns the stack
+# into a deployment: published image instead of a build, Traefik instead of published ports, and worker counts
+# that suit a machine running other things.
+#
+# The host still needs the files - compose.yaml, .env, the nginx config and the two public document roots live
+# there - but it never builds anything: the application comes from the registry.
+
+services:
+
+  # Published through Traefik (traefik2, docker provider) on the external network "web".
+  #
+  # Nothing is published to the host. The ports compose.yaml defaults to are taken on a Traefik host anyway:
+  # 8081 and 8082 are Traefik's own dashboard and metrics entrypoints.
+  #
+  # Three names are needed, and each must resolve to this host before Traefik can get a certificate. Router and
+  # service names are global to Traefik, so only one instance may carry these labels at a time.
+  nginx:
+    ports: !reset []
+    networks:
+      - default      # to reach php
+      - web          # to be reachable by Traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+
+      # public-api/ : Telegram webhooks. Telegram only delivers over HTTPS, which is why this has to sit
+      # behind Traefik at all. Must match APP_PUBLIC_API_URL in .env, because
+      # commands/run /telegram/webhook/set registers that URL with Telegram.
+      - "traefik.http.services.cryptonoises_api.loadbalancer.server.port=8080"
+      - "traefik.http.routers.cryptonoises_api.rule=Host(`cryptonoises-api.teia.art`)"
+      - "traefik.http.routers.cryptonoises_api.tls=true"
+      - "traefik.http.routers.cryptonoises_api.tls.certresolver=cloudflare"
+      - "traefik.http.routers.cryptonoises_api.middlewares=hsts-headers@file"
+
+      # public-app/ : short links that redirect to marketplaces. Must match APP_PUBLIC_DOMAIN.
+      - "traefik.http.services.cryptonoises_app.loadbalancer.server.port=8081"
+      - "traefik.http.routers.cryptonoises_app.rule=Host(`cryptonoises.teia.art`)"
+      - "traefik.http.routers.cryptonoises_app.tls=true"
+      - "traefik.http.routers.cryptonoises_app.tls.certresolver=cloudflare"
+      - "traefik.http.routers.cryptonoises_app.middlewares=hsts-headers@file"
+
+      # The media previews the indexer generates. Must match TEZOS_IPFS_LOCAL_BASE_URL, because that URL goes
+      # into bot messages and Telegram and Discord fetch it server-side - so it has to be publicly reachable
+      # and reasonably quick.
+      - "traefik.http.services.cryptonoises_media.loadbalancer.server.port=8082"
+      - "traefik.http.routers.cryptonoises_media.rule=Host(`cryptonoises-media.teia.art`)"
+      - "traefik.http.routers.cryptonoises_media.tls=true"
+      - "traefik.http.routers.cryptonoises_media.tls.certresolver=cloudflare"
+      - "traefik.http.routers.cryptonoises_media.middlewares=hsts-headers@file"
+
+  #---------------------------------------------------------------------------------------------------------------
+  # Worker counts for a shared host.
+  #
+  # compose.yaml ships the counts the original crontab used, which assume the machine is yours alone. These are
+  # sized for a handful of shared cores. Raise them only with a TzKT and an IPFS gateway you control: the ceiling
+  # is that quota, not CPU, and the public endpoints answer HTTP 429 long before a host runs out of cores.
+  #---------------------------------------------------------------------------------------------------------------
+
+  worker-tokens-metadata:
+    deploy:
+      replicas: 3
+
+  worker-ipfs-primary:
+    deploy:
+      replicas: 3
+
+  worker-profiles:
+    deploy:
+      replicas: 2
+
+  worker-contracts-metadata:
+    deploy:
+      replicas: 1
+
+  worker-detect-tokens:
+    deploy:
+      replicas: 1
+
+  # Nothing in the code pushes to queue_ipfs_secondary - it is a manually filled queue - so this runs no worker
+  # until you have a reason to. Raise it when you fill that queue by hand.
+  worker-ipfs-secondary:
+    deploy:
+      replicas: 0
+
+  #---------------------------------------------------------------------------------------------------------------
+  # MySQL on a shared host: give it a buffer pool that fits what the machine can spare. MYSQL_BUFFER_POOL_SIZE in
+  # .env covers this; it is here as a reminder that the default (2G) is a guess about a machine this file knows
+  # nothing about.
+  #---------------------------------------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------------------------------------------
+
+networks:
+  # Traefik's docker provider network (providers.docker.network = "web"), created outside this stack
+  web:
+    external: true
