@@ -107,6 +107,7 @@ return [
             'animated_fps'          => $envInt('MEDIA_ANIMATED_FPS',      30),
             'max_duration_sec'      => $envInt('MEDIA_MAX_DURATION_SEC',  30),
             'tool_timeout_sec'      => $envInt('MEDIA_TOOL_TIMEOUT_SEC',  60),
+            'preview_retention_days'=> $envInt('MEDIA_PREVIEW_RETENTION_DAYS', 0),
         ],
     ],
 ];

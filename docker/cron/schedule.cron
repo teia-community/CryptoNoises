@@ -18,6 +18,10 @@ SHELL=/bin/bash
 */1  *  *  *  *  /usr/local/bin/cn-cron /opt/cryptonoises/commands/run-tezos /jobs/clean/media-convert-zombies
 */1  *  *  *  *  /usr/local/bin/cn-cron /opt/cryptonoises/commands/run-tezos /jobs/clean/file-cache
 
+# Removes generated previews older than MEDIA_PREVIEW_RETENTION_DAYS. Does nothing while that is 0.
+# Bounded per run, so a first sweep over a large store takes several nights to work through.
+15   3  *  *  *  /usr/local/bin/cn-cron /opt/cryptonoises/commands/run-tezos /jobs/clean/old-previews
+
 # Drops the raw log tables both the sync and the analyzer have passed
 0    *  *  *  *  /usr/local/bin/cn-cron /opt/cryptonoises/commands/run-tezos /blockchain/transaction/cleanup offset=50000
 0    *  *  *  *  /usr/local/bin/cn-cron /opt/cryptonoises/commands/run-tezos /blockchain/bigmap-updates/cleanup offset=50000

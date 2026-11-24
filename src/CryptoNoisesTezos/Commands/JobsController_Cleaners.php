@@ -25,6 +25,112 @@ trait JobsController_Cleaners
         $this->logMsg("Done");
     }
 
+    /**
+     * Removes generated previews older than tezos.media.preview_retention_days.
+     *
+     * A preview exists so that a notification can carry an image, not as an archive. Telegram fetches the file
+     * once while sending and serves its own copy afterwards, so the local file has done its job as soon as the
+     * notification is delivered; Discord keeps the URL in the embed, so a very old embed may lose its image
+     * once pruned. Either way nothing breaks: TelegramBotConnection::sendNotification() falls through to a
+     * text-only message when sendPhoto() fails, so a missing preview costs the image, not the notification.
+     *
+     * The store is sharded by a hash of the IPFS URI (xx/yy/rest.jpg) and can hold millions of files, so this
+     * walks it iteratively, stops after filesLimit deletions, and removes shard directories once they empty.
+     */
+    public function cleanOldPreviews()
+    {
+        set_time_limit(Config::runTimeLimit() + Config::kJOBS_TIMEOUT_DEFAULT);
+
+        if (!$this->checkLockAndWaitUntilNoOtherInstanceRuns('command-lock.jobs-clean.old-previews', Config::kJOBS_TIMEOUT_DEFAULT))
+            return;
+
+        $retentionDays = Config::cfg()->media->previewRetentionDays;
+
+        if ($retentionDays <= 0)
+        {
+            $this->logMsg("tezos.media.preview_retention_days is 0: keeping every preview, nothing to do");
+            return;
+        }
+
+        $basePath = rtrim(Config::cfg()->ipfsLocalBasePath, '/');
+
+        if ($basePath === '' || !is_dir($basePath))
+        {
+            $this->logErr("Preview path [$basePath] does not exist");
+            return;
+        }
+
+        $filesLimit = (int) $this->getCmdVar('filesLimit', 50000);
+
+        if ($filesLimit <= 0)
+            $filesLimit = 50000;
+
+        $cutoff  = Time::Time() - $retentionDays * 24 * 3600;
+        $removed = 0;
+        $failed  = 0;
+        $freed   = 0;
+
+        // Oldest first would be nicer, but sorting the whole tree is not an option at this size: a bounded
+        // sweep per run gets there, because what is left over is simply older on the next run.
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($basePath, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST);
+
+        foreach ($iterator as $entry)
+        {
+            /** @var \SplFileInfo $entry */
+            if ($removed >= $filesLimit)
+            {
+                $this->logMsg("Reached filesLimit ($filesLimit), the rest waits for the next run");
+                break;
+            }
+
+            $path = $entry->getPathname();
+
+            // CHILD_FIRST means a directory is visited after its contents, so an emptied shard is removable here
+            if ($entry->isDir())
+            {
+                if ($path !== $basePath && @rmdir($path))
+                    $this->logMsg("Removed empty directory [$path]");
+
+                continue;
+            }
+
+            if (!$entry->isFile())
+                continue;
+
+            // mtime, not atime: these files are written once and then served, and atime may well be disabled
+            $mtime = $entry->getMTime();
+
+            if ($mtime === false || $mtime >= $cutoff)
+                continue;
+
+            $size = $entry->getSize();
+
+            if (@unlink($path))
+            {
+                $removed++;
+                $freed += (int) $size;
+                $this->logMsg("Removed [$path]");
+            }
+            else
+            {
+                // Suppressed above so one unreadable file cannot end the sweep, but a failure must not look
+                // like "nothing to prune": a wrong owner on the shard directories would silently keep every
+                // preview for ever.
+                $failed++;
+            }
+        }
+
+        // Forced: this is the one line a scheduled run should always leave behind
+        $this->logMsg(sprintf('Removed %d preview(s) older than %d day(s), freeing %.1f MB',
+            $removed, $retentionDays, $freed / 1024 / 1024), "\n", true);
+
+        if ($failed > 0)
+            $this->logErr(sprintf('%d preview(s) could not be removed - check that %s and its subdirectories '
+                .'are owned by the user these commands run as', $failed, $basePath));
+    }
+
     private function cleanFileCacheInFolder(string $basepath, int $filesLimit): void
     {
         $files = glob(rtrim($basepath, '/') . '/*');

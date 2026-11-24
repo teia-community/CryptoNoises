@@ -124,6 +124,11 @@ return [
             'animated_fps'                      => 30,
             'max_duration_sec'                  => 30,      // input video / animation is cut to this length
             'tool_timeout_sec'                  => 60,      // ImageMagick / ffmpeg run time limit (ffmpeg needs cmd_timeout)
+
+            // Days a generated preview is kept; 0 keeps everything. A preview exists so a notification can
+            // carry an image, not as an archive: Telegram fetches it once while sending and serves its own
+            // copy afterwards. /jobs/clean/old-previews does the pruning.
+            'preview_retention_days'            => 0,
         ],
     ],
 ];

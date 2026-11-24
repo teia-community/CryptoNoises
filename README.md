@@ -579,6 +579,34 @@ host's CPU.** With a TzKT of its own, the test stand ran 42 queue workers, 6 seq
 49 PHP processes, 14 MiB each on average - with no restarts and all three stages sitting at the chain head. Pointing
 the same stack at the public endpoint instead produced `HTTP 429` and a stalled analyzer within minutes.
 
+### Previews are not an archive
+
+A generated preview exists so that a notification can carry an image. It is not a copy of the chain's media,
+and keeping one for every token that ever existed is not realistic - measured at roughly 230 KB and about 15
+files per media row, the whole history runs to hundreds of gigabytes and tens of millions of files. Archiving
+Tezos media is a different job, done elsewhere.
+
+`tezos.media.preview_retention_days` (`MEDIA_PREVIEW_RETENTION_DAYS`) bounds the store, and
+`/jobs/clean/old-previews` does the pruning - nightly in [`docker/cron/schedule.cron`](docker/cron/schedule.cron).
+**The code default is 0, which keeps everything**, so an upgrade never deletes anything by surprise; a fresh
+`.env` from `.env.example` sets 30.
+
+This is safe because of how the two platforms fetch an image:
+
+- **Telegram** is handed a URL and downloads the file once while sending. The message then references
+  Telegram's own copy, and your URL is never fetched again - so once a notification is delivered, the local
+  file has done its job, permanently.
+- **Discord** keeps the URL in the embed and serves it through its own media proxy, which caches but not for
+  ever. A very old embed can therefore lose its image.
+
+And when a preview is missing, nothing breaks: `sendNotification()` falls through to a text-only message when
+`sendPhoto()` fails, so the notification still arrives, without the picture.
+
+Choose a window comfortably longer than any delay you would tolerate between a token being indexed and its
+notification going out - a preview pruned before its notification is sent means that notification goes out as
+text. The sweep is bounded per run (`filesLimit`, default 50000), so the first pass over a large store works
+through it over several nights, and it removes shard directories as they empty.
+
 ### IPFS gateway
 
 Token metadata and media are read over HTTP from the gateway in `tezos.ipfs_gateway_url`
