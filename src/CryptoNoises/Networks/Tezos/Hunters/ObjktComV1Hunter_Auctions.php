@@ -17,7 +17,8 @@ class ObjktComV1Hunter_Auctions extends ObjktComV1Hunter
         if ($recInit['target'] != self::kEnglishAuctionsKTID &&
             $recInit['target'] != self::kDutchAuctionsKTID &&
             $recInit['target'] != self::kEnglishAuctionsKTID_pre &&
-            $recInit['target'] != self::kDutchAuctionsKTID_pre)
+            $recInit['target'] != self::kDutchAuctionsKTID_pre &&
+            $recInit['target'] != self::kDutchAuctionsKTID_v2)
             return false;
 
         $entrypoint = $recInit['entrypoint'];

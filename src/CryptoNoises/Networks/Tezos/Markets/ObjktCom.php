@@ -13,6 +13,9 @@ class ObjktCom extends AbstractVendor
     {
         switch ($tokenAddress)
         {
+            case Setapp\ObjktCom_v1::DutchAuctionsKTID_v2:      $version = 1; $bigmapId = Setapp\ObjktCom_v1::Bigmap_AuctionsDutch_v2;    break;
+            case Setapp\ObjktCom_v3::EnglishAuctionsKTID_v5:    $version = 3; $bigmapId = Setapp\ObjktCom_v3::Bigmap_AuctionsEnglish_v5;  break;
+            case Setapp\ObjktCom_v3::EnglishAuctionsKTID_v51:   $version = 3; $bigmapId = Setapp\ObjktCom_v3::Bigmap_AuctionsEnglish_v51; break;
             case Setapp\ObjktCom_v1::EnglishAuctionsKTID_pre:   $version = 1; $bigmapId = Setapp\ObjktCom_v1::Bigmap_AuctionsEnglish_pre; break;
             case Setapp\ObjktCom_v1::DutchAuctionsKTID_pre:     $version = 1; $bigmapId = Setapp\ObjktCom_v1::Bigmap_AuctionsDutch_pre;   break;
             case Setapp\ObjktCom_v1::EnglishAuctionsKTID:   $version = 1; $bigmapId = Setapp\ObjktCom_v1::Bigmap_AuctionsEnglish; break;

@@ -23,6 +23,10 @@ abstract class ObjktComV23Hunter extends AbstractHunter
     protected const kEnglishAuctionsKTID_v4         = Setapp\ObjktCom_v4::EnglishAuctionsKTID;
     protected const kMarketplaceFeeWallet_v4        = Setapp\ObjktCom_v4::MarketplaceFeeWallet;
 
+    // objkt.com's english v5 and v5.1 behave like the v3 generation they belong to
+    protected const kEnglishAuctionsKTID_v5         = Setapp\ObjktCom_v3::EnglishAuctionsKTID_v5;
+    protected const kEnglishAuctionsKTID_v51        = Setapp\ObjktCom_v3::EnglishAuctionsKTID_v51;
+
     protected const kMarketplaceKTID_v3             = Setapp\ObjktCom_v3::MarketplaceKTID;
     protected const kEnglishAuctionsKTID_v3         = Setapp\ObjktCom_v3::EnglishAuctionsKTID;
     protected const kDutchAuctionsKTID_v3           = Setapp\ObjktCom_v3::DutchAuctionsKTID;
@@ -52,6 +56,11 @@ abstract class ObjktComV23Hunter extends AbstractHunter
 
     protected function setupHunterAttrsByContract($contract): bool
     {
+        // An english auction contract that shares a generation's behaviour still has to be recognised by its own
+        // address: the handlers below decide english from dutch by comparing the target against
+        // kEnglishAuctionsKTID, so the generation's default address is replaced by the one actually called.
+        $englishAuctionsOverride = null;
+
         switch ($contract)
         {
             case self::kMarketplaceKTID_v4:
@@ -64,6 +73,12 @@ abstract class ObjktComV23Hunter extends AbstractHunter
             case self::kDutchAuctionsKTID_v3:
             case self::kWrapperKTID:
                 $this->kHunterVersion = self::kHunterVersion3;
+                break;
+
+            case self::kEnglishAuctionsKTID_v5:
+            case self::kEnglishAuctionsKTID_v51:
+                $this->kHunterVersion    = self::kHunterVersion3;
+                $englishAuctionsOverride = $contract;
                 break;
 
             case self::kMarketplaceKTID_v3a:
@@ -111,6 +126,10 @@ abstract class ObjktComV23Hunter extends AbstractHunter
             default:
                 return false;
         }
+
+        if ($englishAuctionsOverride !== null)
+            $this->kEnglishAuctionsKTID = $englishAuctionsOverride;
+
         return true;
     }
 
@@ -121,6 +140,7 @@ abstract class ObjktComV23Hunter extends AbstractHunter
         return [
             self::kMarketplaceKTID_v4, self::kEnglishAuctionsKTID_v4,
             self::kMarketplaceKTID_v3, self::kEnglishAuctionsKTID_v3, self::kDutchAuctionsKTID_v3,
+            self::kEnglishAuctionsKTID_v5, self::kEnglishAuctionsKTID_v51,
             self::kMarketplaceKTID_v3a,
             self::kMarketplaceKTID_v2, self::kEnglishAuctionsKTID_v2, self::kDutchAuctionsKTID_v2,
         ];
