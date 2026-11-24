@@ -11,6 +11,7 @@ use CryptoNoises\Localize\Notification;
 use CryptoNoises\Localize\NotificationButton;
 use CryptoNoises\Models;
 use Exception;
+use Throwable;
 use TuriBot\Client;
 
 /**
@@ -285,7 +286,7 @@ class TelegramBotConnection
 
         try
         {
-            if ($this->user->platformChannelId == null)
+            if (!isset($this->user) || $this->user->platformChannelId == null)
                 throw new Exception("platformChannelId is null");
 
             if ($message == '')
@@ -326,7 +327,7 @@ class TelegramBotConnection
 
             return $result->ok ? $result->result->message_id : null;
         }
-        catch (Exception $e)
+        catch (Throwable $e)
         {
             $this->lastSendError ??= $e->getMessage();
             Log::Error(get_class($this), __FUNCTION__, $e->getMessage(), $this->webhook->getRawData());
@@ -340,7 +341,7 @@ class TelegramBotConnection
 
         try
         {
-            if ($this->user->platformChannelId == null)
+            if (!isset($this->user) || $this->user->platformChannelId == null)
                 throw new Exception("platformChannelId is null");
 
             $menu = $inlineKeyboard ? ['inline_keyboard' => $inlineKeyboard] : null;
@@ -365,7 +366,7 @@ class TelegramBotConnection
 
             return $result->ok ? $result->result->message_id : null;
         }
-        catch (Exception $e)
+        catch (Throwable $e)
         {
             $this->lastSendError ??= $e->getMessage();
             Log::Error(get_class($this), __FUNCTION__, $e->getMessage(), $this->webhook->getRawData());
@@ -379,7 +380,7 @@ class TelegramBotConnection
 
         try
         {
-            if ($this->user->platformChannelId == null)
+            if (!isset($this->user) || $this->user->platformChannelId == null)
                 throw new Exception("platformChannelId is null");
 
             $menu = $inlineKeyboard ? ['inline_keyboard' => $inlineKeyboard] : null;
@@ -406,7 +407,7 @@ class TelegramBotConnection
 
             return $result->ok ? $result->result->message_id : null;
         }
-        catch (Exception $e)
+        catch (Throwable $e)
         {
             $this->lastSendError ??= $e->getMessage();
             Log::Error(get_class($this), __FUNCTION__, $e->getMessage(), $this->webhook->getRawData());
@@ -420,7 +421,7 @@ class TelegramBotConnection
 
         try
         {
-            if ($this->user->platformChannelId == null)
+            if (!isset($this->user) || $this->user->platformChannelId == null)
                 throw new Exception("platformChannelId is null");
 
             $menu = $inlineKeyboard ? ['inline_keyboard' => $inlineKeyboard] : null;
@@ -447,7 +448,7 @@ class TelegramBotConnection
 
             return $result->ok ? $result->result->message_id : null;
         }
-        catch (Exception $e)
+        catch (Throwable $e)
         {
             $this->lastSendError ??= $e->getMessage();
             Log::Error(get_class($this), __FUNCTION__, $e->getMessage(), $this->webhook->getRawData());
@@ -461,7 +462,7 @@ class TelegramBotConnection
 
         try
         {
-            if ($this->user->platformChannelId == null)
+            if (!isset($this->user) || $this->user->platformChannelId == null)
                 throw new Exception("platformChannelId is null");
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -477,7 +478,7 @@ class TelegramBotConnection
 
             return $result->ok ? ($result->result[0]->message_id ?? null) : null; // an album returns a list of messages
         }
-        catch (Exception $e)
+        catch (Throwable $e)
         {
             $this->lastSendError ??= $e->getMessage();
             Log::Error(get_class($this), __FUNCTION__, $e->getMessage(), $this->webhook->getRawData());
@@ -502,7 +503,7 @@ class TelegramBotConnection
 
             return $result->ok;
         }
-        catch (Exception $e)
+        catch (Throwable $e)
         {
             Log::Error(get_class($this), __FUNCTION__, $e->getMessage(), $this->webhook->getRawData());
             return false;
@@ -515,7 +516,7 @@ class TelegramBotConnection
     {
         try
         {
-            if ($this->user->platformChannelId == null)
+            if (!isset($this->user) || $this->user->platformChannelId == null)
                 throw new Exception("platformChannelId is null");
 
             $result = $this->client->deleteMessage(
@@ -532,7 +533,7 @@ class TelegramBotConnection
 
             return $result->ok;
         }
-        catch (Exception $e)
+        catch (Throwable $e)
         {
             Log::Error(get_class($this), __FUNCTION__, $e->getMessage(), $this->webhook->getRawData());
             return false;

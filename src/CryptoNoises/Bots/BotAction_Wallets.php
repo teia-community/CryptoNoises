@@ -34,7 +34,7 @@ class BotAction_Wallets
             list ($address, $walletName) = Helper::SplitBySpaces($line, 2);
 
             $address    = Address::Normalize($address);
-            $walletName = trim($walletName);
+            $walletName = trim((string) $walletName); // SplitBySpaces() pads the missing name with null
 
             try
             {

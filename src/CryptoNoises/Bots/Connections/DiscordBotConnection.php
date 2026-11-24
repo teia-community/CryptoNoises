@@ -281,7 +281,7 @@ class DiscordBotConnection
                 throw new Exception('Unknown state: discordChannelId and discordUserId are empty');
             }
         }
-        catch (Exception $e)
+        catch (Throwable $e)
         {
             $this->discord->getLogger()->error('Failed to send notification', [
                 'location'      => get_class($this).'->'.__FUNCTION__,
@@ -407,7 +407,7 @@ class DiscordBotConnection
             $notifyCompleted = true;
             $notifyNotice = null;
         }
-        catch (Exception $e)
+        catch (Throwable $e)
         {
             $notifyCompleted = false;
             $notifyNotice = $e->getMessage();
@@ -613,7 +613,7 @@ class DiscordBotConnection
 
             return $replyToMessage->reply($notification->getDescription());
         }
-        catch (Exception $e)
+        catch (Throwable $e)
         {
             $this->discord->getLogger()->error("Failed to reply notification", [
                 'location'      => get_class($this).'->'.__FUNCTION__,
