@@ -72,9 +72,13 @@ abstract class AbstractJob extends \CryptoCore\Jobs\AbstractJob
 
         $metadataUrl = Ipfs::ConvertUriToUrl($metadataUri);
 
+        // Some minting tools wrote a raw JavaScript value into the token's metadata URI. Build the sentinels from
+        // the configured gateway, so the check keeps working when it is not the default ipfs.io one.
+        $gateway = Config::cfg()->ipfsGatewayUrl;
+
         if ($metadataUrl == null ||
-            $metadataUrl == 'https://ipfs.io/ipfs/undefined' ||
-            $metadataUrl == 'https://ipfs.io/ipfs/[object Object]')
+            $metadataUrl == $gateway.'undefined' ||
+            $metadataUrl == $gateway.'[object Object]')
             throw new Exception("Bad metadata_uri: $metadataUri", JobResult::kFailedAndClose);
 
         $metadataUrl = Ipfs::AppendUniqueTaskIdToUrl($metadataUrl, $queueTaskId);
