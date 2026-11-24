@@ -26,6 +26,7 @@ class TezosNetwork extends AbstractNetwork
         'CryptoNoises\Networks\Tezos\Hunters\AkaSwap_Marketplace',
         'CryptoNoises\Networks\Tezos\Hunters\AkaSwap_Offers',
 
+        'CryptoNoises\Networks\Tezos\Hunters\FxHashV3Hunter',
         'CryptoNoises\Networks\Tezos\Hunters\FxHashV2Hunter_Main',
         'CryptoNoises\Networks\Tezos\Hunters\FxHashV2Hunter_Issuer',
         'CryptoNoises\Networks\Tezos\Hunters\FxHashV0Hunter_Main',

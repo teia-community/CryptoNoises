@@ -13,6 +13,7 @@ class MarketDeals extends AbstractEntity
     use MarketRecords\EightBidou;
     use MarketRecords\FxHashV0;
     use MarketRecords\FxHashV2;
+    use MarketRecords\FxHashV3;
     use MarketRecords\HicEtNunc;
     use MarketRecords\Kalamint;
     use MarketRecords\ObjktComV1;
@@ -78,6 +79,7 @@ class MarketDeals extends AbstractEntity
 
             case Setapp\FxHash_v0::Bigmap_Swaps:                return self::PackDealRecord_FxHashV0_Swaps($bigmap, $value);
             case Setapp\FxHash_v2::Bigmap_Swaps:                return self::PackDealRecord_FxHashV2_Swaps($bigmap, $value);
+            case Setapp\FxHash_v3::Bigmap_Swaps:                return self::PackDealRecord_FxHashV3_Swaps($bigmap, $value);
 
             case Setapp\HicEtNunc::Bigmap_Swaps:               return self::PackDealRecord_HicEtNunc_Swaps($bigmap, $value);
             case Setapp\HicEtNunc::Bigmap_Swaps_v1:            return self::PackDealRecord_HicEtNunc_Swaps($bigmap, $value);
