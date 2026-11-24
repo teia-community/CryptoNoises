@@ -44,8 +44,8 @@ class TezosDomain implements PostActionInterface
                 'expiry_key'        => Helper::UnpackHex2Bin($cValue['expiry_key']),
                 'tzip12_token_id'   => $cValue['tzip12_token_id'],
 
-                'data'              => $cValue['data'] ?: null,
-                'internal_data'     => $cValue['internal_data'] ?: null,
+                'data'              => ($cValue['data'] ?? null) ?: null,
+                'internal_data'     => ($cValue['internal_data'] ?? null) ?: null,
             ]);
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -65,7 +65,7 @@ class TezosDomain implements PostActionInterface
                 'domain'            => Helper::UnpackHex2Bin($cValue['name']),
                 'owner'             => $cValue['owner'],
 
-                'internal_data'     => $cValue['internal_data'] ?: null,
+                'internal_data'     => ($cValue['internal_data'] ?? null) ?: null,
             ]);
         }
     }

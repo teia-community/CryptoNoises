@@ -92,7 +92,7 @@ class RecoveryBigmaps extends AbstractCommand
                 return;
             }
 
-            $update = ['is_active' => $item['is_active'] ?: 'yes'] + $fields;
+            $update = ['is_active' => ($item['is_active'] ?? null) ?: 'yes'] + $fields;
 
             Vss::dbTezos()->update($tableName, $update, [
                 'bigmap' => $item['bigmap'],

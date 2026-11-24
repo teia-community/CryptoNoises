@@ -585,7 +585,7 @@ abstract class AbstractHunter
                     $transferData->sender        = $sender;
                     $transferData->target        = $target;
 
-                    $transferData->quantity      = (float)($item['amount'] ?: 1);
+                    $transferData->quantity      = (float)(($item['amount'] ?? null) ?: 1);
 
                     $transferData->tokenAddress  = $tokenAddress;
                     $transferData->tokenId       = $item['token_id'] ?? 0;
@@ -644,7 +644,7 @@ abstract class AbstractHunter
                     $transferData->sender        = $sender;
                     $transferData->target        = $target;
 
-                    $transferData->quantity      = (float)($item['amount'] ?: 1);
+                    $transferData->quantity      = (float)(($item['amount'] ?? null) ?: 1);
 
                     $transferData->tokenAddress  = $tokenAddress;
                     $transferData->tokenId       = $item['token_id'] ?? 0;
@@ -677,7 +677,7 @@ abstract class AbstractHunter
                 $transferData->sender        = $sender;
                 $transferData->target        = $target;
 
-                $transferData->quantity      = (float)($paramValue['amount'] ?: 1);
+                $transferData->quantity      = (float)(($paramValue['amount'] ?? null) ?: 1);
 
                 $transferData->tokenAddress  = $tokenAddress;
                 $transferData->tokenId       = 0;
@@ -709,7 +709,7 @@ abstract class AbstractHunter
                 $transferData->sender        = $sender;
                 $transferData->target        = $target;
 
-                $transferData->quantity      = (float)($paramValue['value'] ?: 1);
+                $transferData->quantity      = (float)(($paramValue['value'] ?? null) ?: 1);
 
                 $transferData->tokenAddress  = $tokenAddress;
                 $transferData->tokenId       = 0;

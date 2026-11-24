@@ -74,32 +74,32 @@ class AnalyzeNewlyDetectedToken extends AbstractJob
             $this->struct     = $this->buildParameterMask($value);
             $this->structMask = json_encode($this->struct);
 
-            if ($this->struct['token_id'] === 'val')
+            if (($this->struct['token_id'] ?? null) === 'val')
             {
                 // {"token_id":"val",{"token_info":{"":"uri"}}
-                if ($this->struct['token_info'][''] === 'uri')
-                    return $this->openToken($value['token_info']['']);
+                if (($this->struct['token_info'][''] ?? null) === 'uri')
+                    return $this->openToken($value['token_info'][''] ?? null);
 
                 // {"token_id":"val",{"token_info":{"metadataHash":"uri"}}
-                if ($this->struct['token_info']['metadataHash'] === 'uri')
-                    return $this->openToken($value['token_info']['metadataHash']);
+                if (($this->struct['token_info']['metadataHash'] ?? null) === 'uri')
+                    return $this->openToken($value['token_info']['metadataHash'] ?? null);
 
                 // {"token_id":"val",{"token_metadata_map":{"":"uri"}}
-                if ($this->struct['token_metadata_map'][''] === 'uri')
-                    return $this->openToken($value['token_metadata_map']['']);
+                if (($this->struct['token_metadata_map'][''] ?? null) === 'uri')
+                    return $this->openToken($value['token_metadata_map'][''] ?? null);
 
                 // {"token_id":"val","metadata":{"":"uri"}}
-                if ($this->struct['metadata'][''] === 'uri')
-                    return $this->openToken($value['metadata']['']);
+                if (($this->struct['metadata'][''] ?? null) === 'uri')
+                    return $this->openToken($value['metadata'][''] ?? null);
 
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
                 // {"token_id":"val",{"token_info":{"":""}}
-                if ($this->struct['token_info'][''] === '')
+                if (($this->struct['token_info'][''] ?? null) === '')
                     return  $this->openTokenPlaceholder('Metadata is empty');
 
                 // {"token_id":"val",{"token_info":[]}
-                if ($this->struct['token_info'] === [])
+                if (($this->struct['token_info'] ?? null) === [])
                     return  $this->openTokenPlaceholder('Metadata is empty');
             }
 
@@ -107,30 +107,30 @@ class AnalyzeNewlyDetectedToken extends AbstractJob
             // Rare
 
             // {"token_id":"val",{"token_info":{"cid":"uri"...}}
-            if ($this->struct['token_info']['cid'] === 'uri')
-                return $this->openToken($value['token_info']['cid']);
+            if (($this->struct['token_info']['cid'] ?? null) === 'uri')
+                return $this->openToken($value['token_info']['cid'] ?? null);
 
             // {"token_id":"val","token_info":{"ipfs":"uri"}}
-            if ($this->struct['token_info']['ipfs'] === 'uri')
-                return $this->openToken($value['token_info']['ipfs']);
+            if (($this->struct['token_info']['ipfs'] ?? null) === 'uri')
+                return $this->openToken($value['token_info']['ipfs'] ?? null);
 
             // {"token_id":"val","token_info":{"token_url":"uri"}}
-            if ($this->struct['token_info']['token_url'] === 'uri')
-                return $this->openToken($value['token_info']['token_url']);
+            if (($this->struct['token_info']['token_url'] ?? null) === 'uri')
+                return $this->openToken($value['token_info']['token_url'] ?? null);
 
             // {.. "map":{"":"uri" ..} ..}
-            if ($this->struct['map'][''] === 'uri')
-                return $this->openToken($value['map']['']);
+            if (($this->struct['map'][''] ?? null) === 'uri')
+                return $this->openToken($value['map'][''] ?? null);
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
             if ($this->tryParseInnerData($value, null))
                 return true;
 
-            if ($this->tryParseInnerData($value['token_info'], 'token_info'))
+            if ($this->tryParseInnerData($value['token_info'] ?? null, 'token_info'))
                 return true;
 
-            if ($this->tryParseInnerData($value['map'], 'map'))
+            if ($this->tryParseInnerData($value['map'] ?? null, 'map'))
                 return true;
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
