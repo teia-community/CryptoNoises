@@ -74,28 +74,44 @@ class AnalyzeBigmapUpdates
      */
     private function allocate(array $item): void
     {
-        $bigmap = $item['bigmap'];
+        $this->ensureBigmapRecord($item['bigmap'], $item['level']);
+    }
 
+    /**
+     * Makes sure the `bigmaps` row of a bigmap exists, reading its definition from TzKT, and returns the row.
+     *
+     * Normally the row is created from the 'allocate' action, in the block where the bigmap was allocated. An
+     * indexer that does not start at block 1 (see sql/data/README.md) never sees those allocations, so the first
+     * key update of an already existing bigmap creates the row instead. The definition comes from TzKT either way,
+     * so the result is the same; only `first_level` is the block where this indexer first saw the bigmap.
+     *
+     * @throws Exception
+     */
+    private function ensureBigmapRecord(int $bigmap, int $level): array
+    {
         $bigmapItem = Models\Bigmaps::model()->getItem($bigmap);
 
         if ($bigmapItem !== null)
-            return;
+            return $bigmapItem;
 
         $bigmapData = Tzkt::GetBigmapDetails($bigmap);
 
         if ($bigmapData === null)
             throw new Exception('Cannot get bigmap data from tzkt');
 
+        // TzKT only sends the fields it has: "alias" is missing for a contract without one, and "tags" for a
+        // bigmap without tags. Reading them unguarded was a notice on PHP 7.4 and is a warning on PHP 8, which
+        // Fat-Free turns into a fatal error. All of these columns are nullable.
         $item = [
             'bigmap'            => $bigmap,
-            'contract'          => $bigmapData['contract']['address'],
-            'alias'             => $bigmapData['contract']['alias'],
-            'path'              => $bigmapData['path'],
+            'contract'          => $bigmapData['contract']['address'] ?? null,
+            'alias'             => $bigmapData['contract']['alias'] ?? null,
+            'path'              => $bigmapData['path'] ?? null,
             'state'             => Models\Bigmaps::kSTATE_Active,
-            'first_level'       => $item['level'],
-            'tags'              => $bigmapData['tags'] ? json_encode($bigmapData['tags']) : null,
-            'key_type'          => json_encode($bigmapData['keyType']),
-            'value_type'        => json_encode($bigmapData['valueType']),
+            'first_level'       => $level,
+            'tags'              => !empty($bigmapData['tags']) ? json_encode($bigmapData['tags']) : null,
+            'key_type'          => json_encode($bigmapData['keyType'] ?? null),
+            'value_type'        => json_encode($bigmapData['valueType'] ?? null),
         ];
 
         //--------------------------------------------------------------------------------------------------------------
@@ -170,6 +186,15 @@ class AnalyzeBigmapUpdates
         //--------------------------------------------------------------------------------------------------------------
 
         Models\Bigmaps::model()->insert($item);
+
+        // Re-read instead of returning $item: the classification above only fills the fieldkey_* columns it needs,
+        // and callers read the row's columns directly.
+        $bigmapItem = Models\Bigmaps::model()->getItem($bigmap);
+
+        if ($bigmapItem === null)
+            throw new Exception("Bigmap record #$bigmap could not be created");
+
+        return $bigmapItem;
     }
 
     private function remove(array $item): void
@@ -225,10 +250,8 @@ class AnalyzeBigmapUpdates
     {
         $bigmap = $item['bigmap'];
 
-        $bigmapItem = Models\Bigmaps::model()->getItem($bigmap);
-
-        if ($bigmapItem === null)
-            throw new Exception("Bigmap record #$bigmap does not exist");
+        // Allowed: an indexer that started after this bigmap was allocated has no row for it yet
+        $bigmapItem = $this->ensureBigmapRecord($bigmap, $item['level']);
 
         if ($bigmapItem['state'] == Models\Bigmaps::kSTATE_Removed)
         {

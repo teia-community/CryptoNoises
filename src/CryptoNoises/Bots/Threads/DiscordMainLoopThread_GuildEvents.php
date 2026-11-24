@@ -6,7 +6,7 @@ use CryptoNoises\Models;
 use Discord\Discord;
 use Discord\Parts\Guild\Ban;
 use Discord\Parts\Guild\Guild;
-use Discord\Parts\Guild\Role;
+use Discord\Parts\Guild\Role\Role;
 use Discord\Parts\Part;
 use Discord\WebSockets\Event;
 
@@ -32,7 +32,7 @@ trait DiscordMainLoopThread_GuildEvents
             if ($unavailable)
                 return;
 
-            Models\DiscordGuilds::model()->fixLeave($guild->id, $guild->name);
+            Models\DiscordGuilds::model()->fixLeave($guild->id);
             Models\UsersRedirects::model()->removeItemsByGuildId((int) $guild->id);
 
             // the bot left the server: its logged events (members, roles, bans) are not needed any more

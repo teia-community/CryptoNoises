@@ -36,6 +36,13 @@ class Downloader
             if (mb_strlen($data) <= 4096 && strpos($data, '504 Gateway Time-out') !== false)
                 return null;
 
+            // The cache directory is not created anywhere else on this path (unlike setCacheFileId()), so on a
+            // fresh install every write failed with "No such file or directory".
+            $cacheDir = dirname($cacheFullPath);
+
+            if (!is_dir($cacheDir))
+                mkdir($cacheDir, 0755, true);
+
             file_put_contents($cacheFullPath, $data);
         }
 

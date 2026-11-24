@@ -81,14 +81,17 @@ trait JobsController_Cleaners
 
         // Workaround: ImageMagick sometimes hangs on broken media; kill convert processes that run longer than 5 min.
         // `etime` is the elapsed time ([[dd-]hh:]mm:ss), not the CPU time, so hung processes are found too.
-        $needle    = Config::cfg()->cmd_imageMagickConvert.' '.Config::cfg()->privateStorageBasePath.'/';
-        $processes = explode("\n", (string) shell_exec('ps -eo pid=,etime=,args='));
+        // Match the tool and the storage path separately: MediaTool puts the "-limit ..." options and the forced
+        // input coder ("png:/path/...") between the binary and the file name, so they are not adjacent in the args.
+        $needleCmd  = Config::cfg()->cmd_imageMagickConvert;
+        $needlePath = Config::cfg()->privateStorageBasePath.'/';
+        $processes  = explode("\n", (string) shell_exec('ps -eo pid=,etime=,args='));
 
         foreach ($processes as $process)
         {
             $process = trim($process);
 
-            if ($process == '' || strpos($process, $needle) === false)
+            if ($process == '' || strpos($process, $needleCmd) === false || strpos($process, $needlePath) === false)
                 continue;
 
             if (preg_match('/^([0-9]+) +([0-9:-]+) +(.+)$/u', $process, $m) == 0)
