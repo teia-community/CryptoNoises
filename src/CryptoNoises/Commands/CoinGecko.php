@@ -4,20 +4,48 @@ namespace CryptoNoises\Commands;
 
 use CryptoNoises\Config;
 use CryptoNoises\Core\Log;
+use CryptoCore\Time;
 use CryptoNoises\Models;
 use CryptoNoises\Networks;
 
 class CoinGecko extends AbstractCommand
 {
+    /**
+     * How long to wait between passes. Rates do not move fast enough for a finer grain to be worth anything,
+     * and the point is to stay well inside CoinGecko's free-tier allowance: a pass is one request per coin.
+     */
+    const kPASS_INTERVAL_SEC = 300;
+
     public function sync(): void
     {
-        set_time_limit(Config::kJOBS_TIMEOUT_DEFAULT);
+        $tsStart = Time::Microtime();
+
+        set_time_limit(Config::runTimeLimit() + Config::kJOBS_TIMEOUT_DEFAULT);
 
         if (!$this->checkLockAndWaitUntilNoOtherInstanceRuns('command-lock.coin-gecko.sync', Config::kJOBS_TIMEOUT_DEFAULT))
             return;
 
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+        // This runs as a long-lived service (bots-coingecko), so it syncs and waits rather than returning after
+        // one pass. Returning made the container exit 0 and the restart policy start it again immediately, which
+        // is a loop asking CoinGecko for the same handful of coins as fast as it can answer.
+        while (true)
+        {
+            $this->syncOnce();
+
+            if (Time::Microtime() - $tsStart > Config::runTimeLimit())
+                break;
+
+            $this->logMsg("Sleep for ".self::kPASS_INTERVAL_SEC." sec");
+            sleep(self::kPASS_INTERVAL_SEC);
+        }
+
+        $this->logMsg("Done");
+    }
+
+    private function syncOnce(): void
+    {
         $coins = Models\CurrencyIn::model()->selectEnabled();
 
         foreach ($coins as $coinItem)
@@ -27,7 +55,12 @@ class CoinGecko extends AbstractCommand
             $data = Networks\Globals\CoinGecko::GetCoinDetails($coinItem['coin_gecko_id']);
 
             if ($data == null)
-                continue; // CoinGecko sometimes fails to respond; skip this coin
+            {
+                // Saying so matters: when every call fails, the only other symptom is coin rates rendering as
+                // "?.???" in a notification, with nothing anywhere to explain why.
+                $this->logErr("{$coinItem['coin_gecko_id']}: no answer from CoinGecko, skipped");
+                continue;
+            }
 
             if (!isset($data['market_data']['current_price']))
             {
