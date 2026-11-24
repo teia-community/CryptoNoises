@@ -43,10 +43,12 @@ class BotMessagesTelegram extends VssModel
     {
         $item['ts_event'] = Time::Now();
 
-        if (is_object($item['data_request']) || is_array($item['data_request']))
+        // An incoming message is logged before anything has been sent, so it has no data_response at all;
+        // BotMessagesDiscord already guards these the same way.
+        if (is_object($item['data_request'] ?? null) || is_array($item['data_request'] ?? null))
             $item['data_request'] = json_encode($item['data_request']);
 
-        if (is_object($item['data_response']) || is_array($item['data_response']))
+        if (is_object($item['data_response'] ?? null) || is_array($item['data_response'] ?? null))
             $item['data_response'] = json_encode($item['data_response']);
 
         return Vss::dbLog()->insert($this->tableName($item['ts_event']), $item);

@@ -52,10 +52,20 @@ release:
 | `monolog/monolog` (via discord-php) | 2.8 | 3.13 | Integer log levels still work; the thread logger uses the `Monolog\Level` enum. |
 | `davtur19/turibot` (Telegram API) | 1.20 | 2.16 | This one changed the most. Argument order moved (`editMessageText()` takes `$text` first now), `message_thread_id` was inserted into the middle of several signatures, `disable_web_page_preview` became the `link_preview_options` object and `thumb` became `thumbnail`. Every call now passes **named arguments**, so a future insertion cannot silently shift a parameter. |
 
-Checks that pass on PHP 8.4: `php -l` over all 523 files, loading all 515 classes under `error_reporting(E_ALL)`
-with zero deprecations, and `vendor/bin/phpstan analyse` (level 0: no undefined classes, methods or functions) with
-no errors. The indexer was then run against the live TzKT API, which is what turned up the
-[undefined array keys](#undefined-array-keys-notices-on-74-fatal-on-8x) that static analysis cannot see.
+Checks that pass on PHP 8.4: `php -l` over all 527 files, loading all 515 **project** classes under
+`error_reporting(E_ALL)` with no diagnostics, and `vendor/bin/phpstan analyse` (level 0: no undefined classes,
+methods or functions) with no errors.
+
+None of that was enough on its own. Running the indexer against the live TzKT API turned up the
+[undefined array keys](#undefined-array-keys-notices-on-74-fatal-on-8x), and sending a request through the
+Telegram webhook turned up two more fatals in the first few lines of that path - neither of which any static
+check can see, because the data that triggers them comes from outside.
+
+One deprecation does remain, in the vendor code rather than this project's: turibot 2.16 declares
+`getUpdate(string $body = null)`, which PHP 8.4 deprecates as an implicitly nullable parameter. It is raised
+while the class is compiled, before Fat-Free's handler can turn it into a fatal, so it is logged to
+`log/php_error.*.log` and nothing breaks - verified by driving a request through the webhook. 2.16 is the newest
+release, so there is nothing to upgrade to; the project never calls that method, only loads the class.
 
 **Error handling is the thing to remember here.** Fat-Free installs an error handler that turns *any* reported
 diagnostic into `$f3->error(500, ...)`, and its `HALT` default ends the process with `die(1)`. Since
