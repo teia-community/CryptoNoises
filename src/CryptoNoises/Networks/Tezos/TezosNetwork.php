@@ -67,6 +67,8 @@ class TezosNetwork extends AbstractNetwork
 
         'CryptoNoises\Networks\Tezos\Hunters\EightScriboHunter',
 
+        'CryptoNoises\Networks\Tezos\Hunters\DropArtHunter',
+
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         // Not a marketplace: comments posted on a token (teia.art). Must come before the Default* hunters,
         // which would otherwise take the call as an unremarkable contract interaction.

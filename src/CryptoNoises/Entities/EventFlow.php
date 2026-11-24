@@ -182,6 +182,8 @@ class EventFlow
             case Enum\EventFlowType::TokenMintExpense_Ticket:       # no grouping: each fx(hash) mint shows its own iteration index
             case Enum\EventFlowType::TokenUpdateMetadata:
 
+            case Enum\EventFlowType::DropPurchase:
+
             case Enum\EventFlowType::TokenComment:
             case Enum\EventFlowType::TokenCommentReply:
 
@@ -521,6 +523,17 @@ class EventFlow
             $this->pushEventNotificationByOwnerAdid($targetAdid, $targetAddress, $eventFlowId, NotificationType::TokenUpdateMetadata);
 
             $this->pushEventNotificationForUserIds($this->broadcastChannels_userIds, $eventFlowId, NotificationType::TokenUpdateMetadata, Models\EventsNotifications::kPRIORITY_INDEX_Background);
+        }
+
+        //===[ DROP EVENTS ]============================================================================================
+
+        // A drop purchase has no token id yet - the piece is minted later - so sender/target carry the creator
+        // and the buyer, and the collection stands in for the artwork.
+        else if ($this->event_type == Enum\EventFlowType::DropPurchase)
+        {
+            $this->pushEventNotificationByOwnerAdid($senderAdid, $senderAddress, $eventFlowId, NotificationType::DropSold);
+
+            $this->pushEventNotificationByOwnerAdid($targetAdid, $targetAddress, $eventFlowId, NotificationType::DropBuy);
         }
 
         //===[ COMMENT EVENTS ]=========================================================================================

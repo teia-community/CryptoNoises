@@ -22,6 +22,9 @@ abstract class NotificationType
 
     const TokenUpdateMetadata               = 'token-update-metadata';
 
+    const DropBuy                           = 'drop-buy';
+    const DropSold                          = 'drop-sold';
+
     const TokenComment                      = 'token-comment';
     const TokenCommentReply                 = 'token-comment-reply';
 
