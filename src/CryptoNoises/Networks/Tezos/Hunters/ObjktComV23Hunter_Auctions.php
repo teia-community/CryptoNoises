@@ -174,7 +174,13 @@ class ObjktComV23Hunter_Auctions extends ObjktComV23Hunter
 
             foreach ($subRecords as $key => $record)
             {
-                if ($record['parameter']['value']['value'] == $currentBid)
+                // Same reason as in AbstractHunter::unpackTransfersEvents(): a sub-record without an entrypoint
+                // has no parameter, and an auction settlement routinely contains plain transfers. The null check
+                // is separate from the comparison because null == 0 is true on PHP 8, so a parameterless record
+                // would otherwise match a current bid of zero.
+                $recordValue = $record['parameter']['value']['value'] ?? null;
+
+                if ($recordValue !== null && $recordValue == $currentBid)
                 {
                     $recCurrentBid = $record;
                     unset($subRecords[$key]);
