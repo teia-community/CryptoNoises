@@ -95,6 +95,34 @@ services:
     profiles: ["init"]
 
   #-------------------------------------------------------------------------------------------------------------------
+  # Backups. Both are behind profiles: only ONE instance should write to a given S3 prefix, so staging and any
+  # standby keep theirs switched off.
+  #
+  #   docker compose --profile backup run --rm db-backup seed   # chain data only, no personal data
+  #   docker compose --profile backup run --rm db-backup full   # everything; needs BACKUP_PASSPHRASE for S3
+  #   docker compose --profile restore run --rm db-restore latest
+  #
+  # To take a nightly dump, add it to docker/cron/schedule.cron on the instance that owns the prefix.
+  #-------------------------------------------------------------------------------------------------------------------
+  db-backup:
+    <<: *app
+    entrypoint: ["db-dump"]
+    command: ["full"]
+    profiles: ["backup"]
+    restart: "no"
+    volumes:
+      - backups:/backup
+
+  db-restore:
+    <<: *app
+    entrypoint: ["db-restore"]
+    command: ["latest"]
+    profiles: ["restore"]
+    restart: "no"
+    volumes:
+      - backups:/backup
+
+  #-------------------------------------------------------------------------------------------------------------------
   # Web: php-fpm behind nginx. public-api/ takes the Telegram webhooks, public-app/ redirects to marketplaces.
   #-------------------------------------------------------------------------------------------------------------------
   php:
@@ -281,3 +309,4 @@ volumes:
   ipfs-previews:
   private-storage:
   app-logs:
+  backups:

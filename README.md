@@ -217,6 +217,54 @@ document roots live there - but it never builds anything: the application comes 
 A newly created GHCR package is **private**, so the host needs `docker login ghcr.io` with a token that has
 `read:packages`, or the package has to be made public in the organisation's package settings.
 
+## Dumps, backups and seeding a new deployment
+
+Two kinds of dump, and the difference is the point:
+
+| | Contains | Personal data |
+|---|---|---|
+| `seed` | the three indexer schemas: chain data | **none** |
+| `full` | the above plus the bots schema: users, their wallets, their Telegram chat ids and Discord user ids, and the monthly message-log tables | **yes** |
+
+The bots schema is the only one with personal data in it. The `telegram` and `discord_name` columns in
+`profiles_tzkt` / `profiles_tzprofiles` are self-published on-chain handles, already public by their owner's
+choice, so a `seed` dump can be moved around without ceremony. `db-dump` **refuses to upload a `full` dump to
+S3 without `BACKUP_PASSPHRASE`.**
+
+```bash
+docker compose --profile backup  run --rm db-backup seed    # chain data only
+docker compose --profile backup  run --rm db-backup full    # everything
+docker compose --profile restore run --rm db-restore latest
+```
+
+Both are behind profiles because only one instance should write to a given S3 prefix - a standby or a staging
+box must not prune the one that matters. For a nightly dump, add it to `docker/cron/schedule.cron` on the
+instance that owns the prefix.
+
+Artifacts are `gzip`ed, encrypted with AES-256 (PBKDF2) when `BACKUP_PASSPHRASE` is set, kept in the `backups`
+volume and optionally uploaded with [`s5cmd`](https://github.com/peak/s5cmd) to any S3-protocol endpoint
+(`BACKUP_S3_URL`, `BACKUP_S3_ENDPOINT`). Old artifacts of the same kind are pruned by the timestamp in their
+name, so re-uploading an old one cannot make it look fresh.
+
+The dump uses `--single-transaction` (a consistent snapshot that does not lock out the running workers),
+`--routines` (`sql/schema/tezos.sql` defines `ADDR2ADID()` and `ADID2ADDR()`), `--hex-blob` (`ipfs_uri` and the
+token tags are `varbinary` holding arbitrary bytes from the chain) and `--no-tablespaces` (the application user
+has no global `PROCESS` privilege).
+
+### Seeding a deployment from a local sync
+
+Indexing the whole chain takes days, so it is reasonable to do it once somewhere convenient and move the result.
+The cursors travel with the dump, so the new instance only catches up the gap.
+
+`db-restore` refuses to run over databases that already hold indexer data unless `BACKUP_RESTORE_FORCE=1`, and
+prints the two steps that still need doing before the bots start (see
+[Enabling the bots](#enabling-the-bots)) - after a full-history sync `queue_tokens_events` holds one mint event
+per token that ever existed.
+
+**The media previews are not in the dump.** `ipfs_media` rows say a token has a thumbnail; the file lives in the
+`ipfs-previews` volume at a path derived from a hash of its IPFS URI. Copy that volume too, or older tokens
+simply have no image in their notifications.
+
 ## Installation without Docker
 
 ```bash

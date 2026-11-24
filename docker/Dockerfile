@@ -59,6 +59,18 @@ ADD --checksum=sha256:${SUPERCRONIC_SHA256} \
     /usr/local/bin/supercronic
 RUN chmod 0755 /usr/local/bin/supercronic
 
+# s5cmd talks the plain S3 protocol over --endpoint-url, which keeps the backup scripts independent of whichever
+# S3 service is behind the endpoint. Deliberately not MinIO's `mc`: its downloads are gone (410), so it cannot be
+# pinned in a build any more.
+ARG S5CMD_VERSION=2.3.0
+ARG S5CMD_SHA256=de0fdbfa3aceae55e069ba81a0fc17b2026567637603734a387b2fca06c299b4
+ADD --checksum=sha256:${S5CMD_SHA256} \
+    https://github.com/peak/s5cmd/releases/download/v${S5CMD_VERSION}/s5cmd_${S5CMD_VERSION}_Linux-64bit.tar.gz \
+    /tmp/s5cmd.tar.gz
+RUN tar -xzf /tmp/s5cmd.tar.gz -C /usr/local/bin s5cmd \
+    && chmod 0755 /usr/local/bin/s5cmd \
+    && rm -f /tmp/s5cmd.tar.gz
+
 # Harden ImageMagick: token metadata is untrusted media. Only the raster coders MediaTool forces are allowed,
 # so a file can never be read as SVG / MVG / MSL / TEXT / URL and reference local files or internal services.
 COPY docker/imagemagick/policy.xml /etc/ImageMagick-7/policy.xml
@@ -79,7 +91,10 @@ COPY docker/bin/entrypoint.sh /usr/local/bin/entrypoint
 COPY docker/bin/wait-for-db   /usr/local/bin/wait-for-db
 COPY docker/bin/cn-cron       /usr/local/bin/cn-cron
 COPY docker/bin/run-scheduler /usr/local/bin/run-scheduler
+COPY docker/bin/db-dump.sh    /usr/local/bin/db-dump
+COPY docker/bin/db-restore.sh /usr/local/bin/db-restore
 RUN chmod +x /usr/local/bin/entrypoint /usr/local/bin/wait-for-db /usr/local/bin/cn-cron /usr/local/bin/run-scheduler \
+                /usr/local/bin/db-dump /usr/local/bin/db-restore \
     && chmod +x commands/run commands/run-tezos bin/discord-* docker/bin/* \
     && mkdir -p log external-ipfs external-storage \
     && chown -R www-data:www-data /opt/cryptonoises/log /opt/cryptonoises/external-ipfs /opt/cryptonoises/external-storage
