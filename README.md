@@ -544,8 +544,18 @@ its own `fixer_*` row (empty blocks are written in bulk), so the analyzers, `syn
 
 `TEZOS_START_LEVEL=1` (the default) indexes the whole history, which is what gives the bots complete data. The
 chain is at roughly 15.95M blocks at the end of 2026 and blocks get denser as it goes - NFTs appear from about
-1.3M - so **plan for days, not hours**. [`sql/data/README.md`](sql/data/README.md) lists what a later start level
+1.3M - so **plan for weeks, not days**. [`sql/data/README.md`](sql/data/README.md) lists what a later start level
 costs instead.
+
+Measured on the test stand against a self-hosted TzKT, over the sparse blocks below 250k: the transaction sync
+sustains **about 10 levels per second** and the bigmap sync about 5, each in batches of roughly 100 levels. That
+puts a from-scratch sync in the region of **three weeks of wall clock**, and the denser blocks later on are slower,
+not faster. Both stages are single cursors that cannot be scaled sideways (see the `stage-*` row in
+[Services](#services)), so that figure is a property of the design rather than of the hardware.
+
+The limit is not TzKT. The same TzKT answered a single-level transaction query in 25ms while the sync was spending
+about 100ms per level, so the time goes on the per-level bookkeeping each stage does in MySQL: a `fixer_*` row per
+block, per level. Faster disks and a closer TzKT help a little; nothing in `.env` changes the order of magnitude.
 
 What matters for the catch-up:
 
