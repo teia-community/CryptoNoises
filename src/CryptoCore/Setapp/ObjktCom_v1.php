@@ -18,6 +18,11 @@ class ObjktCom_v1
     public const EnglishAuctionsKTID_pre            = 'KT1Wvk8fon9SgNEPQKewoSL2ziGGuCQebqZc';
     public const DutchAuctionsKTID_pre              = 'KT1ET45vnyEFMLS9wX1dYHEs9aCN3twDEiQw';
 
+    // objkt.com's dutch auction v2, same generation and same entrypoints as the two above. One call in its
+    // whole life and an empty auctions bigmap, but it is wired so the address is never an unknown contract.
+    public const DutchAuctionsKTID_v2               = 'KT1W8PqJsZcpcAgDQH9SKQSZKvjVbpjUk8Sc';
+    public const Bigmap_AuctionsDutch_v2            = 6015;         # KT1W8PqJsZcpcAgDQH9SKQSZKvjVbpjUk8Sc / auctions
+
     public const Bigmap_AuctionsEnglish_pre         = 5904;         # KT1Wvk8fon9SgNEPQKewoSL2ziGGuCQebqZc / auctions
     public const Bigmap_AuctionsDutch_pre           = 5907;         # KT1ET45vnyEFMLS9wX1dYHEs9aCN3twDEiQw / auctions
 

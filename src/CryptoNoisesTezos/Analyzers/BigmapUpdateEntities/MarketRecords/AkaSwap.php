@@ -28,6 +28,31 @@ trait AkaSwap
         return $rec;
     }
 
+    /**
+     * akaswap V1's swaps: written before the contract traded more than its own FA2, so the fields are named
+     * after akaOBJ and the token contract is implied rather than stored.
+     */
+    public static function PackDealRecord_AkaSwap_Swaps_v1(int $bigmap, /* mixed */ $value): ?MarketDealRecord
+    {
+        if (($value['akaOBJ_id'] ?? null) === null)
+        {
+            Log::Error("MarketRecords", __FUNCTION__, "Bad params at #$bigmap", $value);
+            return null;
+        }
+
+        $rec = new MarketDealRecord();
+        $rec->exkey_token_address   = self::KeyToExkey(\CryptoNoises\Networks\Tezos\Hunters\AkaSwap::kTokensKTID);
+        $rec->exkey_token_id        = self::KeyToExkey($value['akaOBJ_id']);
+        $rec->exkey_token_artist    = null;
+        $rec->exkey_token_owner     = self::KeyToExkey($value['issuer']);
+        $rec->objkt_amount          = $value['akaOBJ_amount'];
+        $rec->objkt_price_xtz       = self::NormalizeXtzPrice($value['xtz_per_akaOBJ']);
+        $rec->objkt_royalties       = null;
+
+        $rec->is_active             = $rec->objkt_amount > 0 ? MarketDealRecord::kActive_Yes : MarketDealRecord::kActive_No;
+        return $rec;
+    }
+
     public static function PackDealRecord_AkaSwap_Auctions(int $bigmap, /* mixed */ $value): ?MarketDealRecord
     {
         if ($value['token_fa2'] === null || $value['token_id'] === null)

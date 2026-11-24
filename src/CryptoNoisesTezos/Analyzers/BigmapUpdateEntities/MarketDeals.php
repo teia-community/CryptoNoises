@@ -66,7 +66,9 @@ class MarketDeals extends AbstractEntity
 
         switch ($bigmap)
         {
-            case  55662:    return self::PackDealRecord_AkaSwap_Swaps($bigmap, $value);                                 # KT1Dn3sambs7KZGW88hH2obZeSzfmCmGvpFo / swaps
+            case Setapp\AkaSwap::Bigmap_Swaps_v21:              return self::PackDealRecord_AkaSwap_Swaps($bigmap, $value);
+            case Setapp\AkaSwap::Bigmap_Swaps_v2:               return self::PackDealRecord_AkaSwap_Swaps($bigmap, $value);
+            case Setapp\AkaSwap::Bigmap_Swaps_v1:               return self::PackDealRecord_AkaSwap_Swaps_v1($bigmap, $value);
             case Setapp\AkaSwap::Bigmap_Auctions:              return self::PackDealRecord_AkaSwap_Auctions($bigmap, $value);
 
             case 113273:    return self::PackDealRecord_EightBidou_Swaps($bigmap, $value);                              # KT1BvWGFENd4CXW5F3u4n31xKfJhmBGipoqF / swap_list
@@ -78,6 +80,10 @@ class MarketDeals extends AbstractEntity
             case Setapp\FxHash_v2::Bigmap_Swaps:                return self::PackDealRecord_FxHashV2_Swaps($bigmap, $value);
 
             case Setapp\HicEtNunc::Bigmap_Swaps:               return self::PackDealRecord_HicEtNunc_Swaps($bigmap, $value);
+            case Setapp\HicEtNunc::Bigmap_Swaps_v1:            return self::PackDealRecord_HicEtNunc_Swaps($bigmap, $value);
+
+            // 8scribo stores a swap in the hic et nunc shape, plus the fa2 it trades
+            case Setapp\EightScribo::Bigmap_Swaps:             return self::PackDealRecord_HicEtNunc_Swaps($bigmap, $value);
 
             case Setapp\Kalamint::Bigmap_Tokens:               return self::PackDealRecord_Kalamint_Swaps($bigmap, $value);
 
@@ -88,6 +94,11 @@ class MarketDeals extends AbstractEntity
             // objkt.com's first two auction contracts: the values carry the same keys as the pair above
             case Setapp\ObjktCom_v1::Bigmap_AuctionsEnglish_pre: return self::PackDealRecord_ObjktComV1_AuctionsEnglish($bigmap, $value);
             case Setapp\ObjktCom_v1::Bigmap_AuctionsDutch_pre:   return self::PackDealRecord_ObjktComV1_AuctionsDutch($bigmap, $value);
+            case Setapp\ObjktCom_v1::Bigmap_AuctionsDutch_v2:    return self::PackDealRecord_ObjktComV1_AuctionsDutch($bigmap, $value);
+
+            // objkt.com's english v5 and v5.1 carry the same values as english v6
+            case Setapp\ObjktCom_v3::Bigmap_AuctionsEnglish_v5:  return self::PackDealRecord_ObjktComV3_AuctionsEnglish($bigmap, $value);
+            case Setapp\ObjktCom_v3::Bigmap_AuctionsEnglish_v51: return self::PackDealRecord_ObjktComV3_AuctionsEnglish($bigmap, $value);
 
             case Setapp\ObjktCom_v2::Bigmap_Swaps:              return self::PackDealRecord_ObjktComV2_Swaps($bigmap, $value);
             case Setapp\ObjktCom_v2::Bigmap_AuctionsEnglish:    return self::PackDealRecord_ObjktComV2_AuctionsEnglish($bigmap, $value);

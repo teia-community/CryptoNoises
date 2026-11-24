@@ -10,12 +10,19 @@ use CryptoNoises\Networks\Tezos\Hunters\HicEtNuncHunter;
 
 class HicEtNunc extends AbstractVendor
 {
-    public static function GetSwapDetails($swapId): ?TokenActions\Swap
+    /**
+     * @param string|null $marketplaceContract which marketplace the swap belongs to (null = the v2 marketplace)
+     */
+    public static function GetSwapDetails($swapId, ?string $marketplaceContract = null): ?TokenActions\Swap
     {
         if ($swapId === null)
             return null;
 
-        $value = GatewayTezos\BigmapGate::GetValueByBigmapAndKey(Setapp\HicEtNunc::Bigmap_Swaps, $swapId);
+        $bigmap = $marketplaceContract === Setapp\HicEtNunc::MarketplaceKTID_v1
+            ? Setapp\HicEtNunc::Bigmap_Swaps_v1
+            : Setapp\HicEtNunc::Bigmap_Swaps;
+
+        $value = GatewayTezos\BigmapGate::GetValueByBigmapAndKey($bigmap, $swapId);
 
         if ($value === null)
             return null;
