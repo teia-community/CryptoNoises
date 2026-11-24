@@ -84,8 +84,22 @@ final class BatchSyncRunner
      */
     private function syncRange(int $levelFrom, LevelRangeLoader $range, int $levelsLimit, float $tsStart): int
     {
-        $synced = 0;
+        $synced   = 0;
+        $batched  = $this->sync instanceof BatchedLevelSyncInterface;
         $emptyLevels = [];
+        $batchLevels = [];
+
+        // The cursor is the fixer row with the highest level (getLastJobItem orders by level DESC), so a row must
+        // never appear for a level while a lower one still has none: the cursor would step over it for good.
+        // Everything below therefore writes in level order - the pending batch is committed before any higher
+        // level is marked, and the empty levels of a gap are marked before the batch that follows them.
+        $flushBatch = function () use (&$batchLevels, $range) {
+            if ($batchLevels)
+            {
+                $this->syncLevelsInOneTransaction($batchLevels, $range);
+                $batchLevels = [];
+            }
+        };
 
         for ($level = $levelFrom; $level <= $range->levelTo && $synced < $levelsLimit; $level++, $synced++)
         {
@@ -97,18 +111,71 @@ final class BatchSyncRunner
                 $emptyLevels[] = $level;
 
                 if (count($emptyLevels) >= self::kEMPTY_LEVELS_CHUNK)
+                {
+                    $flushBatch();
                     $this->closeEmptyLevels($emptyLevels);
+                }
 
                 continue;
             }
 
-            $this->closeEmptyLevels($emptyLevels);
-            $this->syncLevel($level, $range->itemsByLevel[$level]);
+            if ($emptyLevels)
+            {
+                $flushBatch();
+                $this->closeEmptyLevels($emptyLevels);
+            }
+
+            if ($batched)
+                $batchLevels[] = $level;
+            else
+                $this->syncLevel($level, $range->itemsByLevel[$level]);
         }
 
+        $flushBatch();
         $this->closeEmptyLevels($emptyLevels);
 
         return $synced;
+    }
+
+    /**
+     * Syncs the levels that have items under a single database transaction.
+     *
+     * On any failure the batch is rolled back and the same levels are replayed one at a time through the
+     * per-level path, so the level that actually failed is the one that ends up marked as an error - a batch
+     * must not turn one bad level into a hundred.
+     *
+     * @param int[] $levels
+     */
+    private function syncLevelsInOneTransaction(array $levels, LevelRangeLoader $range): void
+    {
+        /** @var BatchedLevelSyncInterface $sync */
+        $sync = $this->sync;
+
+        $this->fixer->openLevels($levels);
+
+        try
+        {
+            $itemsByLevel = [];
+
+            foreach ($levels as $level)
+                $itemsByLevel[$level] = $range->itemsByLevel[$level];
+
+            $sync->batchBegin($itemsByLevel);
+
+            foreach ($itemsByLevel as $level => $items)
+                $sync->batchAdd($level, $items);
+
+            $this->fixer->closeLevels($sync->batchCommit());
+        }
+        catch (Exception $e)
+        {
+            $sync->batchRollback();
+
+            ($this->log)("Batch of ".count($levels)." level(s) failed, replaying one by one: ".$e->getMessage());
+
+            foreach ($levels as $level)
+                $this->syncLevel($level, $range->itemsByLevel[$level]);
+        }
     }
 
     private function closeEmptyLevels(array &$levels): void

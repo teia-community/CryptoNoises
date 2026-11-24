@@ -206,6 +206,86 @@ class VssDb
         return $this->exec($sql, $valuesData);
     }
 
+    /**
+     * Inserts many rows with one statement per chunk, so a batch of block levels costs a few round trips instead of
+     * one per row. A VssDbExp value is inlined per row exactly as insert() does.
+     *
+     * Rows do not have to carry the same keys: callers build a row by setting only the fields that apply, so one
+     * row can have an `entrypoint` and the next none. Rows are therefore grouped by their exact set of keys and a
+     * statement is written per group, which is what makes each row's columns the ones insert() would have named.
+     * Taking the first row's keys for the whole set instead would quietly drop the extra fields of every other
+     * shape, and the remaining columns would still be stored - so the loss would not show up as an error.
+     *
+     * The chunk size is a compromise: large enough that the round trips disappear, small enough that the statement
+     * stays well inside max_allowed_packet even with json columns in the row.
+     *
+     * @param array[] $rows
+     * @param string   $suffixSql appended after VALUES, for an ON DUPLICATE KEY UPDATE clause
+     * @return int number of statements executed (0 for an empty set)
+     */
+    public function insertMany($tableName, array $rows, $extendedParams = '', int $chunkSize = 500, string $suffixSql = '')
+    {
+        if (empty($rows))
+            return 0;
+
+        $byShape = array();
+
+        foreach ($rows as $row)
+            $byShape[join("\0", array_keys($row))][] = $row;
+
+        $chunks = 0;
+
+        foreach ($byShape as $shapeRows)
+            $chunks += $this->insertManyOfOneShape($tableName, $shapeRows, $extendedParams, $chunkSize, $suffixSql);
+
+        return $chunks;
+    }
+
+    /** @param array[] $rows all carrying the same keys in the same order */
+    private function insertManyOfOneShape($tableName, array $rows, $extendedParams, int $chunkSize, string $suffixSql)
+    {
+        $keys       = array_keys(reset($rows));
+        $fieldsSql  = join(',', array_map(function ($key) { return "`$key`"; }, $keys));
+        $chunks     = 0;
+
+        foreach (array_chunk($rows, $chunkSize) as $chunkIndex => $chunk)
+        {
+            $tuples     = array();
+            $valuesData = array();
+
+            foreach ($chunk as $rowIndex => $row)
+            {
+                $placeholders = array();
+
+                foreach ($keys as $key)
+                {
+                    $value = $row[$key] ?? null;
+
+                    if (is_object($value) && get_class($value) == 'CryptoCore\Vss\VssDbExp')
+                    {
+                        $placeholders[] = $value->sql;
+                        continue;
+                    }
+
+                    // Named rather than positional: the rest of this class uses named parameters, and a name per
+                    // row and column cannot be thrown off by the order the driver binds them in.
+                    $name = ':r'.$rowIndex.'_'.count($placeholders);
+                    $placeholders[] = $name;
+                    $valuesData[$name] = $value;
+                }
+
+                $tuples[] = '('.join(',', $placeholders).')';
+            }
+
+            $sql = " INSERT $extendedParams INTO $tableName ($fieldsSql) VALUES ".join(',', $tuples)." $suffixSql ";
+
+            $this->exec($sql, $valuesData);
+            $chunks++;
+        }
+
+        return $chunks;
+    }
+
     public function insertAndGetId($tableName, $fields, $extendedParams = '')
     {
         $this->insert($tableName, $fields, $extendedParams);

@@ -21,4 +21,11 @@ class Blocks extends VssModel
     {
         return Vss::dbTezos()->insert($this->tableName(), $item, 'IGNORE');
     }
+
+    /** @param array[] $items */
+    public function insertMany(array $items): void
+    {
+        if (!empty($items))
+            Vss::dbTezos()->insertMany($this->tableName(), $items, 'IGNORE');
+    }
 }
