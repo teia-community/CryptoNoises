@@ -28,6 +28,13 @@ class VssDb
         $config = VssCfg::cfg()->getDbConfig($this->dbId);
         $this->dbc = new DB\SQL($config['connectionString'], $config['username'], $config['password']);
 
+        // Fat-Free keeps a query log in memory, and nothing here ever reads it. Writing it is not free: for every
+        // statement it builds a regex per bound parameter and runs preg_replace with all of them over the SQL, to
+        // store an interpolated copy of the query. A multi-row insert binds thousands of parameters, so that one
+        // statement costs seconds; and because the log only grows, a stage that runs for an hour keeps every
+        // query it has ever made. Measured on a 500-row insert: about 3 seconds with the log, 30ms without.
+        $this->dbc->log(false);
+
         if ($this->charset)
             $this->dbc->exec("SET NAMES '{$this->charset}';");
     }
