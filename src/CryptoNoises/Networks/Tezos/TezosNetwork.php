@@ -35,6 +35,7 @@ class TezosNetwork extends AbstractNetwork
         'CryptoNoises\Networks\Tezos\Hunters\ObjktComV23Hunter_Auctions',
         'CryptoNoises\Networks\Tezos\Hunters\ObjktComV23Hunter_Offers',
         'CryptoNoises\Networks\Tezos\Hunters\ObjktComV23Hunter_Wrapper',
+        'CryptoNoises\Networks\Tezos\Hunters\ObjktComProjectOffersHunter',
 
         'CryptoNoises\Networks\Tezos\Hunters\TeiaHunter',
 
