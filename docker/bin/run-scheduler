@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+#
+# Runs docker/cron/schedule.cron under supercronic, in the foreground, as the container's main process.
+#
+# supercronic (unlike cron) needs no root, wants a crontab with no user column, and writes job output to its own
+# stdout, so `docker compose logs scheduler` shows it.
+
+set -euo pipefail
+
+CRONTAB=/opt/cryptonoises/docker/cron/schedule.cron
+
+if [ ! -f "$CRONTAB" ]; then
+    echo "run-scheduler: no crontab at $CRONTAB" >&2
+    exit 2
+fi
+
+echo "run-scheduler: $(grep -cE '^[^#[:space:]]' "$CRONTAB" || true) scheduled entries"
+
+# -passthrough-logs keeps the job's own output as-is instead of wrapping every line in supercronic's JSON
+exec supercronic -passthrough-logs "$CRONTAB"

@@ -78,7 +78,10 @@ class Users extends VssModel
 
             $length = self::$FieldLengths[$key];
 
-            if (mb_strlen($value) > $length)
+            // A null is a legitimate value here - Telegram leaves out username and last_name for users who
+            // have not set them - and on PHP 8.1 passing it to mb_strlen() is a deprecation, which Fat-Free
+            // turns into a fatal. A null is never too long, so cast and let it through to be stored as NULL.
+            if (mb_strlen((string) $value) > $length)
             {
                 Log::Warning(get_class($this), __FUNCTION__, "Value for `$key` is too long (more than $length). Skipped", $value);
                 unset($data[$key]);

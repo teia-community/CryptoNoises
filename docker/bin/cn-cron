@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+#
+# cron wrapper: restores the container environment (cron clears it), runs the command from the project directory
+# and drops to www-data. Output goes to PID 1's stdout, so `docker compose logs` shows it.
+
+set -euo pipefail
+
+# shellcheck disable=SC1091
+source /run/cryptonoises/cron-env
+
+# cron starts jobs in the home directory of the job's user (root). Fat-Free's shutdown handler chdir()s back to
+# the directory it started in, which www-data cannot enter, so every command ended with
+# "chdir(): Permission denied" in the error log. The project directory is the right working directory anyway.
+cd /opt/cryptonoises
+
+exec setpriv --reuid=www-data --regid=www-data --init-groups "$@"

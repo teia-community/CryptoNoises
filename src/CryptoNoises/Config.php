@@ -25,6 +25,22 @@ class Config
 
     const kJOBS_TIMEOUT_DEFAULT                         =    55;
 
+    /**
+     * How long a looping command keeps working before it exits, in seconds.
+     *
+     * Under cron this has to stay below the one-minute tick, which is what kJOBS_TIMEOUT_DEFAULT is for. Running
+     * the same commands as long-lived worker services (see compose.yaml) means they should not exit every minute:
+     * set worker.time_limit_sec (WORKER_TIME_LIMIT_SEC) to the lifetime you want, and let the restart policy
+     * bring the process back. It is a lifetime, not a deadline for one task.
+     */
+    public static function runTimeLimit(): int
+    {
+        $value = (int) Environment::get('worker.time_limit_sec', self::kJOBS_TIMEOUT_DEFAULT);
+
+        return $value > 0 ? $value : self::kJOBS_TIMEOUT_DEFAULT;
+    }
+
+
     const kJOBS_TIMEOUT_TELEGRAM_NOTIFIER               =  3*60;
     const kJOBS_TIMEOUT_TEZOS_TRANSACTION_ANALYZE       =  8*60;
     const kJOBS_TIMEOUT_EVENTS_TOKENS                   =  5*60;

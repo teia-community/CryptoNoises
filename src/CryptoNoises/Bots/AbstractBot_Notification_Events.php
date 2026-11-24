@@ -758,7 +758,7 @@ trait AbstractBot_Notification_Events
             $expireDateTime = $customData[CustomData::kEXPIRED];
             $expireDuration = strtotime($expireDateTime) - Time::Time();
 
-            $notification->bind('{###DOMAIN###}',           $customData[CustomData::kDOMAIN]);
+            $notification->bind('{###DOMAIN###}',           Notification::SafeText((string) $customData[CustomData::kDOMAIN]));
             $notification->bind('{###DOMAIN_RENEW_URL###}', $customData[CustomData::kDOMAIN_RENEW_URL]);
 
             $notification->bind('{###EXPIRE_DATETIME###}',  Phrase::FriendlyDateTime($expireDateTime));

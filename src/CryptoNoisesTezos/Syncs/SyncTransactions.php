@@ -62,7 +62,7 @@ class SyncTransactions implements LevelSyncInterface
             $blItem = [];
             $blItem['level']        = $data['level'];
             $blItem['timestamp']    = $data['timestamp'];
-            $blItem['hash']         = $data['hash'];
+            $blItem['hash']         = $data['hash'] ?? '';
 
             Models\Blocks::model()->insert($blItem);
 
@@ -72,48 +72,58 @@ class SyncTransactions implements LevelSyncInterface
 
             foreach ($data['transactions'] as $item)
             {
+                // TzKT leaves out the fields that do not apply to an operation: "nonce" and "initiator" only come
+                // with internal operations, "tokenTransfersCount" only when there were transfers, and the fee and
+                // storage counters only when they are not zero. Reading them unguarded raised a notice on PHP 7.4,
+                // which was filtered out; on PHP 8 it is a warning, and Fat-Free turns that into a fatal error.
+                // Nullable columns of template__transactions_0xxxx get null, NOT NULL counters get 0.
                 $trItem = [];
                 $trItem['id']               = $item['id'];                          unset($item['id']);
                 $trItem['level']            = $item['level'];                       unset($item['level']);
                 $trItem['counter']          = $item['counter'];                     unset($item['counter']);
                 $trItem['timestamp']        = $item['timestamp'];                   unset($item['timestamp']);
                 unset($item['type']);
-                $trItem['hash']             = $item['hash'];                        unset($item['hash']);
-                $trItem['gasLimit']         = $item['gasLimit'];                    unset($item['gasLimit']);
-                $trItem['gasUsed']          = $item['gasUsed'];                     unset($item['gasUsed']);
-                $trItem['storageLimit']     = $item['storageLimit'];                unset($item['storageLimit']);
-                $trItem['storageUsed']      = $item['storageUsed'];                 unset($item['storageUsed']);
-                $trItem['bakerFee']         = $item['bakerFee'];                    unset($item['bakerFee']);
-                $trItem['storageFee']       = $item['storageFee'];                  unset($item['storageFee']);
-                $trItem['allocationFee']    = $item['allocationFee'];               unset($item['allocationFee']);
-                $trItem['amount']           = $item['amount'];                      unset($item['amount']);
-                $trItem['status']           = $item['status'];                      unset($item['status']);
-                $trItem['hasInternals']     = (int) $item['hasInternals'];          unset($item['hasInternals']);
-                $trItem['nonce']            = $item['nonce'];                       unset($item['nonce']);
+                $trItem['hash']             = $item['hash'] ?? null;                unset($item['hash']);
+                $trItem['gasLimit']         = $item['gasLimit'] ?? 0;               unset($item['gasLimit']);
+                $trItem['gasUsed']          = $item['gasUsed'] ?? 0;                unset($item['gasUsed']);
+                $trItem['storageLimit']     = $item['storageLimit'] ?? 0;           unset($item['storageLimit']);
+                $trItem['storageUsed']      = $item['storageUsed'] ?? 0;            unset($item['storageUsed']);
+                $trItem['bakerFee']         = $item['bakerFee'] ?? 0;               unset($item['bakerFee']);
+                $trItem['storageFee']       = $item['storageFee'] ?? 0;             unset($item['storageFee']);
+                $trItem['allocationFee']    = $item['allocationFee'] ?? 0;          unset($item['allocationFee']);
+                $trItem['amount']           = $item['amount'] ?? 0;                 unset($item['amount']);
+                $trItem['status']           = $item['status'] ?? null;              unset($item['status']);
+                $trItem['hasInternals']     = (int) ($item['hasInternals'] ?? 0);   unset($item['hasInternals']);
+                $trItem['nonce']            = $item['nonce'] ?? null;               unset($item['nonce']);
 
-                $trItem['token_transfers_count'] = $item['tokenTransfersCount'];
+                $trItem['token_transfers_count'] = $item['tokenTransfersCount'] ?? null;
                 unset($item['tokenTransfersCount']);
 
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-                $trItem['parameter'] = json_encode($item['parameter']);
+                // A plain tez transfer carries no "parameter" at all
+                $parameter = $item['parameter'] ?? null;
 
-                if (!empty($item['parameter']) && isset($item['parameter']['entrypoint']))
-                    $trItem['entrypoint'] = $item['parameter']['entrypoint'];
+                $trItem['parameter'] = json_encode($parameter);
+
+                if (!empty($parameter) && isset($parameter['entrypoint']))
+                    $trItem['entrypoint'] = $parameter['entrypoint'];
 
                 unset($item['parameter']);
                 unset($item['parameters']);
 
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-                $trItem['initiator_address']    = $item['initiator']['address'];
-                $trItem['initiator_adid']       = $this->getAddressAdid($item['initiator']['address']);
+                // "initiator" is only set on internal operations, and an address object can carry an alias
+                // without an address. The code below already treats a null initiator_address as normal.
+                $trItem['initiator_address']    = $item['initiator']['address'] ?? null;
+                $trItem['initiator_adid']       = $this->getAddressAdid($trItem['initiator_address']);
 
-                $trItem['sender_address']       = $item['sender']['address'];
-                $trItem['sender_adid']          = $this->getAddressAdid($item['sender']['address']);
+                $trItem['sender_address']       = $item['sender']['address'] ?? null;
+                $trItem['sender_adid']          = $this->getAddressAdid($trItem['sender_address']);
 
-                $trItem['target_address']       = $item['target']['address'];
-                $trItem['target_adid']          = $this->getAddressAdid($item['target']['address']);
+                $trItem['target_address']       = $item['target']['address'] ?? null;
+                $trItem['target_adid']          = $this->getAddressAdid($trItem['target_address']);
 
                 unset($item['initiator']);
                 unset($item['sender']);

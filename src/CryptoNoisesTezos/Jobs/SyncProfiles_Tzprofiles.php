@@ -126,25 +126,30 @@ trait SyncProfiles_Tzprofiles
 
     private function syncTzprofiles_BasicProfile($content, &$updateData): bool
     {
-        if (!in_array('BasicProfile', $content['type']))
+        if (!in_array('BasicProfile', $content['type'] ?? []))
             return false;
 
-        $updateData['alias']         = $content['credentialSubject']['alias'];
-        $updateData['website']       = $content['credentialSubject']['website'];
-        $updateData['description']   = $content['credentialSubject']['description'];
+        // Every field of a Tezos Profiles credential is optional. On PHP 7.4 a missing one was a notice and read
+        // as null; on PHP 8 it is a warning, which Fat-Free turns into a fatal error. Keep the old result (null).
+        $updateData['alias']         = $content['credentialSubject']['alias'] ?? null;
+        $updateData['website']       = $content['credentialSubject']['website'] ?? null;
+        $updateData['description']   = $content['credentialSubject']['description'] ?? null;
 
-        if (strpos($content['credentialSubject']['logo'], 'data:') !== 0)
-            $updateData['logo_url']  = $content['credentialSubject']['logo'];        # Like, data:image/jpeg;base64......
+        $logo = $content['credentialSubject']['logo'] ?? null;
+
+        // A "data:image/jpeg;base64,..." logo is inlined image data, not a URL, and is not stored
+        if ($logo === null || strpos($logo, 'data:') !== 0)
+            $updateData['logo_url']  = $logo;
 
         return true;
     }
 
     private function syncTzprofiles_DnsVerification($content, &$updateData): bool
     {
-        if (!in_array('DnsVerification', $content['type']))
+        if (!in_array('DnsVerification', $content['type'] ?? []))
             return false;
 
-        $dns = $content['credentialSubject']['sameAs'];
+        $dns = (string) ($content['credentialSubject']['sameAs'] ?? '');
         $dns = str_replace('dns:', '', $dns);
         $updateData['dns'] = $dns;
         return true;
@@ -152,10 +157,10 @@ trait SyncProfiles_Tzprofiles
 
     private function syncTzprofiles_TwitterVerification($content, &$updateData): bool
     {
-        if (!in_array('TwitterVerification', $content['type']))
+        if (!in_array('TwitterVerification', $content['type'] ?? []))
             return false;
 
-        $twitter = $content['credentialSubject']['sameAs'];
+        $twitter = (string) ($content['credentialSubject']['sameAs'] ?? '');
         $twitter = str_replace('https://twitter.com/', '', $twitter);
         $updateData['twitter'] = $twitter;
         return true;
@@ -163,10 +168,10 @@ trait SyncProfiles_Tzprofiles
 
     private function syncTzprofiles_DiscordVerification($content, &$updateData): bool
     {
-        if (!in_array('DiscordVerification', $content['type']))
+        if (!in_array('DiscordVerification', $content['type'] ?? []))
             return false;
 
-        $discordName = $content['credentialSubject']['sameAs'];
+        $discordName = (string) ($content['credentialSubject']['sameAs'] ?? '');
         $discordName = str_replace('urn:discord:', '', $discordName);
         $updateData['discord_name'] = $discordName;
         return true;
@@ -174,10 +179,10 @@ trait SyncProfiles_Tzprofiles
 
     private function syncTzprofiles_GitHubVerification($content, &$updateData): bool
     {
-        if (!in_array('GitHubVerification', $content['type']))
+        if (!in_array('GitHubVerification', $content['type'] ?? []))
             return false;
 
-        $github = $content['credentialSubject']['sameAs'];
+        $github = (string) ($content['credentialSubject']['sameAs'] ?? '');
         $github = str_replace('https://github.com/', '', $github);
         $updateData['github'] = $github;
         return true;
@@ -185,19 +190,19 @@ trait SyncProfiles_Tzprofiles
 
     private function syncTzprofiles_EthereumControl($content, &$updateData): bool
     {
-        if (!in_array('EthereumControl', $content['type']))
+        if (!in_array('EthereumControl', $content['type'] ?? []))
             return false;
 
-        $updateData['ethereum_address'] = $content['credentialSubject']['wallet'];
+        $updateData['ethereum_address'] = $content['credentialSubject']['wallet'] ?? null;
         return true;
     }
 
     private function syncTzprofiles_EthereumAddressControl($content, &$updateData): bool
     {
-        if (!in_array('EthereumAddressControl', $content['type']))
+        if (!in_array('EthereumAddressControl', $content['type'] ?? []))
             return false;
 
-        $updateData['ethereum_address'] = $content['credentialSubject']['address'];
+        $updateData['ethereum_address'] = $content['credentialSubject']['address'] ?? null;
         return true;
     }
 }

@@ -53,8 +53,8 @@ trait SyncProfiles_Tzkt
             // Only type and alias are used (wallet names in bot messages). Contact fields (e-mail, social accounts)
             // of third-party accounts are not collected; the columns are cleared on every refresh.
             $updateData = [];
-            $updateData['type']             = $dataBase['type'] ?: null;
-            $updateData['alias']            = $dataBase['alias'] ?: null;
+            $updateData['type']             = ($dataBase['type'] ?? null) ?: null;
+            $updateData['alias']            = ($dataBase['alias'] ?? null) ?: null;
             $updateData['kind']             = null;
             $updateData['description']      = null;
             $updateData['email']            = null;

@@ -4,6 +4,9 @@ namespace CryptoNoisesTezos\Analyzers\TransactionHunters;
 
 abstract class AbstractHunter
 {
+    // Set by the analyzer before analyze(); declared here because PHP 8.2 deprecates dynamic properties
+    public bool $verbose = false;
+
     //------------------------------------------------------------------------------------------------------------------
 
     abstract public function analyze(array $recInit, array $records): bool;

@@ -1,0 +1,21 @@
+# Static analysis used to verify the PHP 7.4 -> 8.4 move: level 0 catches undefined classes, methods and
+# functions, and wrong argument counts, which is what a dependency upgrade breaks.
+#
+#   composer install
+#   cp config/consts-secrets.example.php config/consts-secrets.php    # needed: composer's autoload.files
+#   cp config/environment.example.php    config/environment.php       # executes config/VssCfg.php
+#   vendor/bin/phpstan analyse
+#
+# Higher levels report plenty of pre-existing PHPDoc and magic-property noise in this codebase: the Discord
+# library's Parts resolve attributes through __get, so property access cannot be checked statically, and
+# Fat-Free's DB\SQL forwards unknown methods to PDO through __call.
+parameters:
+    level: 0
+    paths:
+        - src
+        - commands
+        - public-api
+        - public-app
+    bootstrapFiles:
+        - config/VssCfg.php
+    treatPhpDocTypesAsCertain: false

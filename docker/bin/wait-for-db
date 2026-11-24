@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+#
+# Blocks until the MySQL server accepts queries. Used by the init job and the long-running services:
+# `depends_on: service_healthy` covers the server, this also covers a server that is still replaying its redo log.
+#
+# --ssl-verify-server-cert=0: MySQL 8.4 serves TLS with a self-signed certificate it generates on first start, and
+# the client verifies by default. The connection stays encrypted; it is on the private compose network either way.
+
+set -euo pipefail
+
+host="${DB_HOST:-db}"
+port="${DB_PORT:-3306}"
+user="${DB_USER:?DB_USER is required}"
+pass="${DB_PASSWORD:?DB_PASSWORD is required}"
+tries="${DB_WAIT_TRIES:-60}"
+
+for i in $(seq 1 "$tries"); do
+    if mariadb --protocol=TCP --ssl-verify-server-cert=0 \
+            -h "$host" -P "$port" -u "$user" -p"$pass" -e 'SELECT 1' >/dev/null 2>&1; then
+        echo "database is up ($host:$port)"
+        exit 0
+    fi
+
+    echo "waiting for database $host:$port ($i/$tries)..."
+    sleep 2
+done
+
+echo "database $host:$port did not become available" >&2
+exit 1

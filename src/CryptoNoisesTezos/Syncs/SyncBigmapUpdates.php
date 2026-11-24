@@ -54,10 +54,13 @@ class SyncBigmapUpdates implements LevelSyncInterface
 
             foreach ($data as $item)
             {
-                $contractAddress    = $item['contract']['address'];
-
-                $contentKey         = $item['content']['key'];
-                $contentValue       = $item['content']['value'];
+                // The 'allocate' and 'remove' actions describe the bigmap itself, so TzKT sends them without a
+                // "content" object at all, and content_key / content_value are nullable for exactly that reason.
+                // Reading them unguarded raised a notice on PHP 7.4, which was filtered out; on PHP 8 it is a
+                // warning, and Fat-Free turns that into a fatal error - which would stop the sync at the first
+                // bigmap allocation in a synced block.
+                $contentKey         = $item['content']['key']   ?? null;
+                $contentValue       = $item['content']['value'] ?? null;
 
                 unset($item['contract']['alias']);
                 unset($item['contract']['address']);

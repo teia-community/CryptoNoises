@@ -2,6 +2,12 @@
 config/consts-secrets.php
 config/environment.php
 
+# docker-compose configuration (see .env.example)
+.env
+
+# Per-deployment compose overlay (see docker-compose.site.example.yml)
+docker-compose.site.yml
+
 # Dependencies
 vendor/
 

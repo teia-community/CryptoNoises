@@ -4,6 +4,19 @@
 #
 # Sync, analyze, job and notifier commands protect themselves against parallel runs, so "every minute" is safe.
 # Jobs with threadIdx / threadCnt split one queue between N parallel workers - tune the counts to your hardware.
+#
+# This is the original schedule and it still works: every command here stops by itself after
+# worker.time_limit_sec seconds (55 by default), which is what makes a one-minute tick safe.
+#
+# It is no longer the only option. The commands are polling workers, so they can run as long-lived processes
+# instead, with only the janitors and the hourly / daily housekeeping left on a clock. The Docker stack does
+# exactly that - see compose.yaml, docker/cron/schedule.cron and "Workers instead of cron" in the README. To do it
+# without Docker, raise worker.time_limit_sec, run these commands under systemd units or supervisord, and keep a
+# crontab holding only what docker/cron/schedule.cron holds.
+#
+# threadIdx / threadCnt are no longer needed for correctness: the queue claims tasks with
+# SELECT ... FOR UPDATE SKIP LOCKED, so plain parallel workers no longer collide. They are still accepted, so
+# this file keeps working unchanged.
 
 MAILTO=""
 

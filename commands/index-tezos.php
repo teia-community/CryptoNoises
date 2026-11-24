@@ -32,6 +32,7 @@ $f3->route('GET /jobs/exec',                                                    
 $f3->route('GET /jobs/recover-dead-jobs',                                       'CryptoNoisesTezos\Commands\JobsController->recoverDeadJobs');
 $f3->route('GET /jobs/clean/file-cache',                                        'CryptoNoisesTezos\Commands\JobsController->cleanFileCache');
 $f3->route('GET /jobs/clean/media-convert-zombies',                             'CryptoNoisesTezos\Commands\JobsController->cleanMediaConvertZombies');
+$f3->route('GET /jobs/clean/old-previews',                                       'CryptoNoisesTezos\Commands\JobsController->cleanOldPreviews');
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 

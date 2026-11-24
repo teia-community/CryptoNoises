@@ -65,6 +65,11 @@ class TelegramBotWebhook
                 $this->queryType    = TelegramBotConnection::kQUERY_TYPE_Message;
             }
 
+            // "from" and "chat" are both optional in the Bot API (an anonymous channel post carries
+            // neither), and every flow below needs the user: treat such an update as unsupported.
+            if (!isset($whDataMsg->from, $whDataMsg->chat))
+                return false;
+
             $telegramChatId         = $whDataMsg->chat->id;
             $this->chatType         = $whDataMsg->chat->type;
 
@@ -83,6 +88,11 @@ class TelegramBotWebhook
             $whDataMsg              = $whData->callback_query->message;
 
             $this->queryType        = TelegramBotConnection::kQUERY_TYPE_CallbackQuery;
+
+            // "from" and "chat" are both optional in the Bot API (an anonymous channel post carries
+            // neither), and every flow below needs the user: treat such an update as unsupported.
+            if (!isset($whData->callback_query->from, $whDataMsg->chat))
+                return false;
 
             $telegramChatId         = $whDataMsg->chat->id;
             $this->chatType         = $whDataMsg->chat->type;
@@ -103,6 +113,11 @@ class TelegramBotWebhook
         {
             $whDataMsg              = $whData->my_chat_member;
             $this->queryType        = TelegramBotConnection::kQUERY_TYPE_UserAction;
+
+            // "from" and "chat" are both optional in the Bot API (an anonymous channel post carries
+            // neither), and every flow below needs the user: treat such an update as unsupported.
+            if (!isset($whDataMsg->from, $whDataMsg->chat))
+                return false;
 
             $telegramChatId         = $whDataMsg->chat->id;
             $this->chatType         = $whDataMsg->chat->type;

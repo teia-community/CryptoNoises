@@ -23,7 +23,7 @@ class TelegramWebhook extends AbstractCommand
         {
             $url = rtrim(Config::cfg()->publicApiUrl, '/').$path;
 
-            $response = (new Client($token, false))->setWebhook($url, null, null, null, null, null, TELEGRAM_WEBHOOK_SECRET);
+            $response = (new Client($token, false))->setWebhook(url: $url, secret_token: TELEGRAM_WEBHOOK_SECRET);
 
             $this->logMsg("$path -> $url: ".($response->ok ? 'OK' : 'FAILED: '.($response->description ?? 'unknown error')), "\n", true);
         }

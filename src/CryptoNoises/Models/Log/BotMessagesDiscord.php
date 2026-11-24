@@ -6,7 +6,7 @@ use CryptoNoises\Localize\Notification;
 use CryptoCore\Time;
 use CryptoCore\Vss\Vss;
 use CryptoCore\Vss\VssModel;
-use Discord\Parts\Channel\Message;
+use Discord\Parts\Channel\Message\Message;
 use Discord\Parts\Interactions\Interaction;
 class BotMessagesDiscord extends VssModel
 {

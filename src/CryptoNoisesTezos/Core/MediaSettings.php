@@ -24,6 +24,16 @@ final class MediaSettings
     public int $maxDurationSec;         // input video / animation is cut to this length
     public int $toolTimeoutSec;         // ImageMagick / ffmpeg run time limit (ffmpeg via coreutils timeout: tezos.cmd_timeout)
 
+    /**
+     * Days a generated preview is kept on disk; 0 keeps everything.
+     *
+     * This is not an archive: a preview exists so that a notification can carry an image. Telegram downloads
+     * the file once when the message is sent and serves its own copy from then on, so the local file has done
+     * its job as soon as the notification is delivered. Keeping every preview for the whole chain is not
+     * feasible, and a missing preview degrades gracefully - see /jobs/clean/old-previews.
+     */
+    public int $previewRetentionDays;
+
     public static function FromEnvironment(): self
     {
         $s = new self();
@@ -42,6 +52,9 @@ final class MediaSettings
 
         $s->maxDurationSec      = self::Int('max_duration_sec', 30, 1, 600);
         $s->toolTimeoutSec      = self::Int('tool_timeout_sec', 60, 5, 3600);
+
+        // 0 = keep everything. The default does not delete anything; pruning is opt-in.
+        $s->previewRetentionDays = self::Int('preview_retention_days', 0, 0, 36500);
 
         return $s;
     }

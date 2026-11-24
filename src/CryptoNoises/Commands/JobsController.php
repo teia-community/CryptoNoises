@@ -18,7 +18,7 @@ class JobsController extends AbstractCommand
         $threadIdx = $this->getCmdVar('threadIdx', 0);
         $threadCnt = $this->getCmdVar('threadCnt', 1);
         $limit     = $this->getCmdVar('limit', 0);
-        $timeLimit = $this->getCmdVar('timeLimit', Config::kJOBS_TIMEOUT_DEFAULT);
+        $timeLimit = (int) $this->getCmdVar('timeLimit', Config::runTimeLimit());
 
         switch ($jobId)
         {

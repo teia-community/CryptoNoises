@@ -154,8 +154,8 @@ class ObjktComV23Hunter_Auctions extends ObjktComV23Hunter
     {
         try
         {
-            $auctionId  = $recInit['parameter']['value']['auction_id'] ?: null;
-            $currentBid = $recInit['parameter']['value']['amount'] ?: null;
+            $auctionId  = ($recInit['parameter']['value']['auction_id'] ?? null) ?: null;
+            $currentBid = ($recInit['parameter']['value']['amount'] ?? null) ?: null;
 
             if (!is_numeric($auctionId) || !is_numeric($currentBid))
                 throw new Exception("Bad auction params");

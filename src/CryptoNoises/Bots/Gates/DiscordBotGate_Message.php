@@ -8,7 +8,7 @@ use CryptoNoises\Localize\Notification;
 use CryptoNoises\Localize\Phrase;
 use CryptoNoises\Models;
 use Discord\Discord;
-use Discord\Parts\Channel\Message;
+use Discord\Parts\Channel\Message\Message;
 use Discord\Parts\User\User;
 
 trait DiscordBotGate_Message
@@ -82,7 +82,7 @@ trait DiscordBotGate_Message
 
             if ($promise !== null)
             {
-                $promise->done(
+                $promise->then(
                     function (Message $replyMessage) use ($messageObject)
                     {
                         $sleepTime = 60; // seconds

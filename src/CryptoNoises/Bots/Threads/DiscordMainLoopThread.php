@@ -8,11 +8,11 @@ use CryptoNoises\Entities\CallbackAction;
 use CryptoCore\Vss\Vss;
 use Discord\Discord;
 use Discord\InteractionType;
-use Discord\Parts\Channel\Message;
+use Discord\Parts\Channel\Message\Message;
 use Discord\Parts\Interactions\Interaction;
 use Discord\Parts\Interactions\Request\Component;
 use Discord\Parts\Interactions\Request\Option;
-use Discord\Repository\Interaction\ComponentRepository;
+use Discord\Helpers\ExCollectionInterface;
 use Discord\WebSockets\Event;
 use Exception;
 
@@ -156,7 +156,7 @@ class DiscordMainLoopThread extends DiscordAbstractThread
         DiscordBotGate::OnCallback($this->discord, $interaction, $callbackAction);
     }
 
-    private function unpackModalIncomingVars(array &$output, ?ComponentRepository $components): void
+    private function unpackModalIncomingVars(array &$output, ?ExCollectionInterface $components): void
     {
         if ($components == null)
             return;

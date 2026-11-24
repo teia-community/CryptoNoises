@@ -2,6 +2,8 @@
 
 namespace CryptoNoisesTezos\Vendors;
 
+use CryptoNoisesTezos\Config;
+
 class Ipfs
 {
     public static function IsExactlyIpfsUri(?string $uri): bool
@@ -33,18 +35,20 @@ class Ipfs
         if (preg_match('#^https://#', $uri))
             return $uri;
 
+        $gateway = Config::cfg()->ipfsGatewayUrl;
+
         // Case 2: bare CID
         // QmPnKG1u8iU3owL86wbtUCcZak9Q9ZaeHv19FvYttLago3
         if (preg_match('#^Qm([A-Za-z0-9]{44})$#', $uri))
-            return 'https://ipfs.io/ipfs/' . $uri;
+            return $gateway . $uri;
 
         if (preg_match('#^ipfs://#', $uri) == 0)
             return null;
 
         $url = $uri;
-        $url = str_replace('ipfs://ipfs/',                                  'ipfs://',                          $url);  # Rarible-style ipfs://ipfs/<cid>
-        $url = str_replace('ipfs://',                                       'https://ipfs.io/ipfs/',            $url);
-        $url = str_replace('https://ipfs.io/ipfs/https://ipfs.io/ipfs/',    'https://ipfs.io/ipfs/',            $url);
+        $url = str_replace('ipfs://ipfs/',  'ipfs://', $url);   # Rarible-style ipfs://ipfs/<cid>
+        $url = str_replace('ipfs://',       $gateway,  $url);
+        $url = str_replace($gateway.$gateway, $gateway, $url);  # a URI that already carried the gateway
         return $url;
     }
 

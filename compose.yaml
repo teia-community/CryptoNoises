@@ -1,0 +1,312 @@
+# CryptoNoises: Telegram / Discord bots for Tezos wallets and NFTs, with a Tezos indexer.
+#
+#   docker compose up db-init               # schema + reference data + start level (one-shot, idempotent)
+#   docker compose up -d                    # db, php, nginx, scheduler, and the indexer workers
+#   docker compose --profile bots up -d     # the bots workers + the three Discord threads
+#
+# There is no cron here. Everything that used to be a once-a-minute cron job is a long-lived process:
+#
+#   worker-*     queue workers. Interchangeable, so scale them at will:
+#                  docker compose up -d --scale worker-tokens-metadata=20
+#   stage-*      the sequential stages. Each one walks a block cursor, so each must stay a SINGLE instance -
+#                never scale these.
+#   scheduler    supercronic, for the ~15 things that genuinely want a clock (janitors, hourly and daily
+#                housekeeping). See docker/cron/schedule.cron.
+#
+# The bots are behind the "bots" profile on purpose: without bot tokens they exit at once, and the restart policy
+# would turn that into a restart loop. Start them only after the indexer has caught up with the chain, see
+# "Enabling the bots" in the README.
+
+name: cryptonoises
+
+#-----------------------------------------------------------------------------------------------------------------------
+
+x-app: &app
+  # Built locally by default. Set CN_IMAGE to a published tag to run a built image instead:
+  #   CN_IMAGE=ghcr.io/teia-community/cryptonoises:sha-abc1234
+  #   docker compose pull && docker compose up -d
+  # .github/workflows/docker-image.yml publishes those on every push to main.
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+  image: ${CN_IMAGE:-cryptonoises:local}
+  env_file: .env
+  depends_on:
+    db:
+      condition: service_healthy
+  volumes:
+    # Previews served by nginx on 8082, and the originals they are built from
+    - ipfs-previews:/opt/cryptonoises/external-ipfs
+    - private-storage:/opt/cryptonoises/external-storage
+    - app-logs:/opt/cryptonoises/log
+  restart: unless-stopped
+
+# Every long-running command: drop to www-data (the entrypoint needs root first), and live for
+# WORKER_TIME_LIMIT_SEC before exiting so the restart policy can recycle the process.
+x-worker: &worker
+  <<: *app
+  environment:
+    CN_DROP_PRIVILEGES: "1"
+
+#-----------------------------------------------------------------------------------------------------------------------
+
+services:
+
+  #-------------------------------------------------------------------------------------------------------------------
+  # MySQL: four databases on one server (cross-database queries are used, so one user owns all of them)
+  #-------------------------------------------------------------------------------------------------------------------
+  db:
+    image: mysql:8.4
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      # The initial sync writes a lot and is not replicated here: flush the redo log once a second
+      # instead of on every commit, and skip the binary log. See "Initial sync from block 1" in the README
+      # before reusing these on a replicated server.
+      - --innodb-flush-log-at-trx-commit=2
+      - --skip-log-bin
+      - --innodb-buffer-pool-size=${MYSQL_BUFFER_POOL_SIZE:-2G}
+      - --max-connections=${MYSQL_MAX_CONNECTIONS:-200}
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD is required}
+      MYSQL_USER:          ${DB_USER:?DB_USER is required}
+      MYSQL_PASSWORD:      ${DB_PASSWORD:?DB_PASSWORD is required}
+      # The other three databases are created by db-init, which also grants this user access to them
+      MYSQL_DATABASE:      ${DB_NAME_MAIN:-cryptonoises}
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+    restart: unless-stopped
+
+  #-------------------------------------------------------------------------------------------------------------------
+  # One-shot: schema + reference data + indexer start level + the current month's log tables
+  #-------------------------------------------------------------------------------------------------------------------
+  db-init:
+    <<: *app
+    command: ["/opt/cryptonoises/docker/bin/db-init.sh"]
+    restart: "no"
+    # Naming a service on the command line activates its profile, so `docker compose up db-init` still works.
+    # The profile only keeps it out of a bare `docker compose up`.
+    profiles: ["init"]
+
+  #-------------------------------------------------------------------------------------------------------------------
+  # Backups. Both are behind profiles: only ONE instance should write to a given S3 prefix, so staging and any
+  # standby keep theirs switched off.
+  #
+  #   docker compose --profile backup run --rm db-backup seed   # chain data only, no personal data
+  #   docker compose --profile backup run --rm db-backup full   # everything; needs BACKUP_PASSPHRASE for S3
+  #   docker compose --profile restore run --rm db-restore latest
+  #
+  # To take a nightly dump, add it to docker/cron/schedule.cron on the instance that owns the prefix.
+  #-------------------------------------------------------------------------------------------------------------------
+  db-backup:
+    <<: *app
+    entrypoint: ["db-dump"]
+    command: ["full"]
+    profiles: ["backup"]
+    restart: "no"
+    volumes:
+      - backups:/backup
+
+  db-restore:
+    <<: *app
+    entrypoint: ["db-restore"]
+    command: ["latest"]
+    profiles: ["restore"]
+    restart: "no"
+    volumes:
+      - backups:/backup
+
+  #-------------------------------------------------------------------------------------------------------------------
+  # Web: php-fpm behind nginx. public-api/ takes the Telegram webhooks, public-app/ redirects to marketplaces.
+  #-------------------------------------------------------------------------------------------------------------------
+  php:
+    <<: *app
+    command: ["php-fpm"]
+
+  nginx:
+    image: nginx:1.29-alpine
+    depends_on: [php]
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      # nginx serves the previews and needs the document roots of both PHP entry points
+      - ./public-api:/opt/cryptonoises/public-api:ro
+      - ./public-app:/opt/cryptonoises/public-app:ro
+      - ipfs-previews:/opt/cryptonoises/external-ipfs:ro
+    ports:
+      - "${PORT_API:-8080}:8080"
+      - "${PORT_APP:-8081}:8081"
+      - "${PORT_MEDIA:-8082}:8082"
+    restart: unless-stopped
+
+  #-------------------------------------------------------------------------------------------------------------------
+  # Scheduler: the only work that still runs on a clock (janitors, hourly and daily housekeeping).
+  # docker/cron/schedule.cron lists all 15 entries.
+  #-------------------------------------------------------------------------------------------------------------------
+  scheduler:
+    <<: *app
+    command: ["run-scheduler"]
+
+  #-------------------------------------------------------------------------------------------------------------------
+  # Indexer: sequential stages
+  #
+  # Each of these walks a cursor over block levels and must be the ONLY writer of its cursor, so each is a single
+  # instance. Do not scale them: two copies would fight over the same fixer_* rows.
+  #-------------------------------------------------------------------------------------------------------------------
+  stage-sync-transactions:
+    <<: *worker
+    command: ["/opt/cryptonoises/commands/run-tezos", "/blockchain/transaction/sync-new"]
+
+  stage-sync-bigmaps:
+    <<: *worker
+    command: ["/opt/cryptonoises/commands/run-tezos", "/blockchain/bigmap-updates/sync-new"]
+
+  # Re-counts the bigmap updates of a block N levels back and rolls sync + analysis back on a mismatch.
+  # Two independent passes: one about a minute behind the head, one about an hour.
+  stage-sync-check-recent:
+    <<: *worker
+    command: ["/opt/cryptonoises/commands/run-tezos", "/blockchain/bigmap-updates/sync-check", "thread-id=1", "offset=2"]
+
+  stage-sync-check-hour:
+    <<: *worker
+    command: ["/opt/cryptonoises/commands/run-tezos", "/blockchain/bigmap-updates/sync-check", "thread-id=2", "offset=120"]
+
+  stage-analyze-transactions:
+    <<: *worker
+    command: ["/opt/cryptonoises/commands/run-tezos", "/analyze/transactions/new"]
+
+  stage-analyze-bigmaps:
+    <<: *worker
+    command: ["/opt/cryptonoises/commands/run-tezos", "/analyze/bigmap-updates/new", "limit=50000"]
+
+  #-------------------------------------------------------------------------------------------------------------------
+  # Indexer: queue workers
+  #
+  # Interchangeable - the queue hands each worker a different task with SELECT ... FOR UPDATE SKIP LOCKED - so the
+  # replica count is yours to choose. The numbers below are the thread counts the old crontab used.
+  #   docker compose up -d --scale worker-tokens-metadata=20
+  #-------------------------------------------------------------------------------------------------------------------
+  worker-contracts-metadata:
+    <<: *worker
+    command: ["/opt/cryptonoises/commands/run-tezos", "/jobs/exec", "jobId=sync-contracts-metadata"]
+    deploy:
+      replicas: 4
+
+  worker-detect-tokens:
+    <<: *worker
+    command: ["/opt/cryptonoises/commands/run-tezos", "/jobs/exec", "jobId=detect-new-tokens"]
+    deploy:
+      replicas: 4
+
+  worker-tokens-metadata:
+    <<: *worker
+    command: ["/opt/cryptonoises/commands/run-tezos", "/jobs/exec", "jobId=sync-tokens-metadata"]
+    deploy:
+      replicas: 10
+
+  worker-tokens-metadata-merge:
+    <<: *worker
+    command: ["/opt/cryptonoises/commands/run-tezos", "/jobs/exec", "jobId=merge-tokens-metadata"]
+    deploy:
+      replicas: 1
+
+  # Downloads token media and builds the previews, so this is the ImageMagick / ffmpeg heavy one
+  worker-ipfs-primary:
+    <<: *worker
+    command: ["/opt/cryptonoises/commands/run-tezos", "/jobs/exec", "jobId=sync-ipfs.primary"]
+    deploy:
+      replicas: 10
+
+  # Second, manually filled media queue: nothing in the code pushes to it
+  worker-ipfs-secondary:
+    <<: *worker
+    command: ["/opt/cryptonoises/commands/run-tezos", "/jobs/exec", "jobId=sync-ipfs.secondary"]
+    deploy:
+      replicas: 3
+
+  worker-profiles:
+    <<: *worker
+    command: ["/opt/cryptonoises/commands/run-tezos", "/jobs/exec", "jobId=sync-profiles"]
+    deploy:
+      replicas: 10
+
+  #-------------------------------------------------------------------------------------------------------------------
+  # Bots + API. Start these only after the indexer has caught up with the chain.
+  #-------------------------------------------------------------------------------------------------------------------
+
+  # Turns wallet transactions into events. A block cursor again, so a single instance.
+  stage-wallet-events:
+    <<: *worker
+    command: ["/opt/cryptonoises/commands/run", "/tezos-network/analyze-transactions/new"]
+    profiles: ["bots"]
+
+  bots-wallets-sync:
+    <<: *worker
+    command: ["/opt/cryptonoises/commands/run", "/tezos-network/wallets/sync"]
+    profiles: ["bots"]
+
+  bots-events-mint:
+    <<: *worker
+    command: ["/opt/cryptonoises/commands/run", "/events/nfts-mint/tezos"]
+    profiles: ["bots"]
+
+  bots-events-updates:
+    <<: *worker
+    command: ["/opt/cryptonoises/commands/run", "/events/nfts-updates/tezos"]
+    profiles: ["bots"]
+
+  bots-coingecko:
+    <<: *worker
+    command: ["/opt/cryptonoises/commands/run", "/coingecko/sync"]
+    profiles: ["bots"]
+
+  # Telegram delivery. These are what users feel, so they are their own processes rather than scheduled jobs.
+  bots-notifier-events:
+    <<: *worker
+    command: ["/opt/cryptonoises/commands/run", "/telegram/notifier/events-flow"]
+    profiles: ["bots"]
+
+  bots-notifier-informs:
+    <<: *worker
+    command: ["/opt/cryptonoises/commands/run", "/telegram/notifier/inform-flow"]
+    profiles: ["bots"]
+
+  worker-domains-expiry:
+    <<: *worker
+    command: ["/opt/cryptonoises/commands/run", "/jobs/exec", "jobId=domains-expiry"]
+    profiles: ["bots"]
+    deploy:
+      replicas: 1
+
+  #-------------------------------------------------------------------------------------------------------------------
+  # Discord: three long-running threads. Each runs in the foreground as its container's main process,
+  # so Docker supervises them instead of bin/discord-start + the process-list check.
+  #-------------------------------------------------------------------------------------------------------------------
+  discord-main-loop:
+    <<: *worker
+    command: ["/opt/cryptonoises/commands/run", "/discord/bot/start/main-loop", "silent=1"]
+    profiles: ["bots"]
+
+  discord-notifier:
+    <<: *worker
+    command: ["/opt/cryptonoises/commands/run", "/discord/bot/start/notifier", "silent=1"]
+    profiles: ["bots"]
+
+  discord-assistant:
+    <<: *worker
+    command: ["/opt/cryptonoises/commands/run", "/discord/bot/start/assistant", "silent=1"]
+    profiles: ["bots"]
+
+#-----------------------------------------------------------------------------------------------------------------------
+
+volumes:
+  db-data:
+  ipfs-previews:
+  private-storage:
+  app-logs:
+  backups:

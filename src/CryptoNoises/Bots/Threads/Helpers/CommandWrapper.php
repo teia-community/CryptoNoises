@@ -3,8 +3,8 @@
 namespace CryptoNoises\Bots\Threads\Helpers;
 
 use Discord\Discord;
-use Discord\Parts\Interactions\Command\Command;
-use Discord\Parts\Interactions\Command\Option;
+use Discord\Parts\Application\Command\Command;
+use Discord\Parts\Application\Command\Option;
 
 class CommandWrapper
 {

@@ -14,6 +14,27 @@ class Config
 
     const kJOBS_TIMEOUT_DEFAULT                         = 55;
 
+    /**
+     * How long a looping command keeps working before it exits, in seconds.
+     *
+     * The per-command kJOBS_TIMEOUT_* constants are the PHP execution ceiling (set_time_limit) and must stay
+     * ABOVE this: they are added to it, so each one is the slack one unit of work may take on top of the loop
+     * budget. Setting a ceiling below the loop budget kills the process mid-task and leaves the block it was
+     * working on in 'processing'.
+     *
+     * Under cron this has to stay below the one-minute tick, which is what kJOBS_TIMEOUT_DEFAULT is for. Running
+     * the same commands as long-lived worker services (see compose.yaml) means they should not exit every minute:
+     * set worker.time_limit_sec (WORKER_TIME_LIMIT_SEC) to the lifetime you want, and let the restart policy
+     * bring the process back. It is a lifetime, not a deadline for one task.
+     */
+    public static function runTimeLimit(): int
+    {
+        $value = (int) Environment::get('worker.time_limit_sec', self::kJOBS_TIMEOUT_DEFAULT);
+
+        return $value > 0 ? $value : self::kJOBS_TIMEOUT_DEFAULT;
+    }
+
+
     const kJOBS_TIMEOUT_TRANSACTION_SYNC                = 3*60;
     const kJOBS_TIMEOUT_TRANSACTION_ANALYZE             = 5*60;
 
@@ -55,6 +76,16 @@ class Config
 
     //------------------------------------------------------------------------------------------------------------------
 
+    // Default IPFS gateway, used when tezos.ipfs_gateway_url is not set
+    const kIPFS_GATEWAY_DEFAULT                 = 'https://ipfs.io/ipfs/';
+
+    // Default TzKT API, used when tezos.tzkt_api_url is not set
+    const kTZKT_API_DEFAULT                     = 'https://api.tzkt.io/v1';
+
+    public string $tzktApiUrl;
+
+    public string $ipfsGatewayUrl;
+
     public string $ipfsLocalBaseUrl;
     public string $ipfsLocalBasePath;
 
@@ -88,6 +119,14 @@ class Config
 
     public function initialize(): void
     {
+        // All chain data comes from here. The public api.tzkt.io rate-limits, and a scaled-up set of workers will
+        // hit that limit, so point this at a TzKT you control (see Vendors/Tzkt.php).
+        $this->tzktApiUrl                           = rtrim((string) Environment::get('tezos.tzkt_api_url', self::kTZKT_API_DEFAULT), '/');
+
+        // Gateway that token metadata and media are read through. The public ipfs.io gateway rate-limits hard
+        // these days, which shows up as "IPFS returned empty data", so point this at a gateway you control.
+        $this->ipfsGatewayUrl                       = rtrim((string) Environment::get('tezos.ipfs_gateway_url', self::kIPFS_GATEWAY_DEFAULT), '/').'/';
+
         $this->ipfsLocalBaseUrl                     = (string) Environment::get('tezos.ipfs_local_base_url');
         $this->ipfsLocalBasePath                    = (string) Environment::get('tezos.ipfs_local_base_path');
 

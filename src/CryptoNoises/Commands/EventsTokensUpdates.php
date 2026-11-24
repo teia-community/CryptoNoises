@@ -22,7 +22,7 @@ class EventsTokensUpdates extends AbstractCommand
 
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-        set_time_limit(Config::kJOBS_TIMEOUT_EVENTS_TOKENS);
+        set_time_limit(Config::runTimeLimit() + Config::kJOBS_TIMEOUT_EVENTS_TOKENS);
 
         if (!$this->checkLockAndWaitUntilNoOtherInstanceRuns('command-lock.events-tokens-updates.tezos', Config::kJOBS_TIMEOUT_DEFAULT))
             return;
@@ -34,7 +34,7 @@ class EventsTokensUpdates extends AbstractCommand
 
         while (true)
         {
-            if (Time::Microtime() - $tsStart > Config::kJOBS_TIMEOUT_DEFAULT)
+            if (Time::Microtime() - $tsStart > Config::runTimeLimit())
                 break;
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
