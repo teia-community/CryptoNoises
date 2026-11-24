@@ -547,15 +547,34 @@ chain is at roughly 15.95M blocks at the end of 2026 and blocks get denser as it
 1.3M - so **plan for weeks, not days**. [`sql/data/README.md`](sql/data/README.md) lists what a later start level
 costs instead.
 
-Measured on the test stand against a self-hosted TzKT, over the sparse blocks below 250k: the transaction sync
-sustains **about 10 levels per second** and the bigmap sync about 5, each in batches of roughly 100 levels. That
-puts a from-scratch sync in the region of **three weeks of wall clock**, and the denser blocks later on are slower,
-not faster. Both stages are single cursors that cannot be scaled sideways (see the `stage-*` row in
-[Services](#services)), so that figure is a property of the design rather than of the hardware.
+Measured on the test stand against a self-hosted TzKT. The two syncs are independent cursors with very
+different speeds:
 
-The limit is not TzKT. The same TzKT answered a single-level transaction query in 25ms while the sync was spending
-about 100ms per level, so the time goes on the per-level bookkeeping each stage does in MySQL: a `fixer_*` row per
-block, per level. Faster disks and a closer TzKT help a little; nothing in `.env` changes the order of magnitude.
+| Stage | Rate | Over 15.95M levels |
+|-------|------|--------------------|
+| `stage-sync-transactions` | 35-50 levels/s (density dependent) | about 4 days |
+| `stage-sync-bigmaps` | about 5 levels/s around level 1.4M | **weeks - this is the long pole** |
+
+The bigmap sync is the one that decides when a from-scratch index is done, and it is slow because it is doing real
+work: around 340 `bigmap_updates_*` inserts a second at that point in the chain, where FA2 contracts are dense.
+Both stages are single cursors that cannot be scaled sideways (see the `stage-*` row in [Services](#services)), so
+these are properties of the design, not of the hardware.
+
+**Keep the queue workers stopped while catching up.** They exist to fetch token metadata and build previews, which
+is of no use until the syncs reach the levels that reference them, and 46 of them against one MySQL costs the
+syncs real throughput: measured 33-35 levels/s with the full stack running against 43-51 with `worker-*` stopped,
+with host load dropping from 18 to under 14 on an 18-core box. Start them once the syncs are close to the head.
+
+**What will not help:** MySQL tuning and faster storage. On a 659 MB database with an 8 GB buffer pool the test
+stand ran at `Innodb_buffer_pool_reads = 0` and `Innodb_data_reads = 0` - not one physical read - with about
+14 MB/s of writes and 18 fsyncs a second. There is no I/O to optimise, so ZFS recordsize, a faster disk or a
+bigger buffer pool change nothing. TzKT is not the limit either: it answered a 100-level range in 86-250ms, which
+is 1-3ms per level against the 20-25ms the sync spends on it.
+
+**Where the time actually goes** is round trips: roughly 20 small queries per level, two transactions per level
+across two connections, and a `SELECT COUNT(*)` per level, each costing 0.3-0.6ms under load. Batching those
+inserts and committing once per 100-level batch instead of twice per level is the one change that would move the
+transaction sync's ceiling; it has not been done here.
 
 What matters for the catch-up:
 
