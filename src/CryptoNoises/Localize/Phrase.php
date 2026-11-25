@@ -35,7 +35,8 @@ class Phrase
     public string $actionJoinTwitter                    = "👨‍💻 Follow on Twitter";
     public string $actionJoinDiscord                    = "🗣 Join Discord";
     public string $actionPrivacyPolicy                  = "🔒 Privacy policy";
-    public string $dataSourcesAttribution               = "Data: TzKT API (tzkt.io), CoinGecko";
+    // TzKT's free tier requires one of its labels with a direct link to tzkt.io
+    public string $dataSourcesAttribution               = "Data provided by TzKT API (https://tzkt.io) and CoinGecko (https://www.coingecko.com)";
     public string $poweredByCoinGecko                   = "Powered by CoinGecko";
     public string $actionRedirectToOpenTicket           = "🎟 Open Ticket";
 

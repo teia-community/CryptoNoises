@@ -103,6 +103,9 @@ return [
         // A few requests per day. '' = no lookups.
         'tzkt_aliases_url'                      => 'https://api.tzkt.io/v1',
 
+        // TzKT Pro API key, sent as the `apikey` header to the TzKT URLs above. '' = the free tier.
+        'tzkt_api_key'                          => '',
+
         // A Tezos node's RPC, for bakers' DAL participation (one request per watched baker every ten minutes).
         // '' = no DAL alerts.
         'rpc_url'                               => 'https://rpc.tzkt.io/mainnet',

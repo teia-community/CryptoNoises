@@ -10,7 +10,9 @@ class Config
 {
     use EnvironmentPredicates;
 
-    const kSYNC_BLOCK_BEHIND                            = 1;
+    // Levels the sync stays behind TzKT's head: a Tezos block is final once two more are on top of it, and TzKT
+    // reorganises the levels above - data read from them may be replaced
+    const kSYNC_BLOCK_BEHIND                            = 2;
 
     const kJOBS_TIMEOUT_DEFAULT                         = 55;
 
@@ -89,6 +91,9 @@ class Config
     // TzKT does not run. Empty = no lookups.
     public string $tzktAliasesUrl;
 
+    // TzKT Pro key, sent as the `apikey` header to the TzKT URLs above; empty for the free tier
+    public string $tzktApiKey;
+
     // A Tezos node's RPC, for what only the protocol knows (a baker's DAL participation). Empty = not used.
     public string $tezosRpcUrl;
 
@@ -131,6 +136,7 @@ class Config
         // hit that limit, so point this at a TzKT you control (see Vendors/Tzkt.php).
         $this->tzktApiUrl                           = rtrim((string) Environment::get('tezos.tzkt_api_url', self::kTZKT_API_DEFAULT), '/');
         $this->tzktAliasesUrl                       = rtrim((string) Environment::get('tezos.tzkt_aliases_url', self::kTZKT_API_DEFAULT), '/');
+        $this->tzktApiKey                           = trim((string) Environment::get('tezos.tzkt_api_key', ''));
         $this->tezosRpcUrl                          = rtrim((string) Environment::get('tezos.rpc_url', 'https://rpc.tzkt.io/mainnet'), '/');
 
         // Gateway that token metadata and media are read through. The public ipfs.io gateway rate-limits hard

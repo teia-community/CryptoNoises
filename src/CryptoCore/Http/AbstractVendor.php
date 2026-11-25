@@ -4,14 +4,19 @@ namespace CryptoCore\Http;
 
 class AbstractVendor
 {
-    public static function GetData(string $url): SyncResult
+    /**
+     * @param string[] $headers     extra request headers ("Name: value")
+     * @param int $attempts         tries in all; only a transient failure is retried (see IsTransient())
+     * @param int $timeoutSec       per try
+     */
+    public static function GetData(string $url, array $headers = [], int $attempts = 3, int $timeoutSec = 60): SyncResult
     {
-        return self::RequestData($url, 'GET');
+        return self::RequestData($url, 'GET', null, $headers, $attempts, $timeoutSec);
     }
 
-    public static function GetDataJson(string $url): SyncResult
+    public static function GetDataJson(string $url, array $headers = [], int $attempts = 3, int $timeoutSec = 60): SyncResult
     {
-        $result = self::GetData($url);
+        $result = static::GetData($url, $headers, $attempts, $timeoutSec);
 
         if ($result->notSuccess())
             return $result;
@@ -22,22 +27,70 @@ class AbstractVendor
 
     //------------------------------------------------------------------------------------------------------------------
 
+    /** Longest wait between tries, whatever a 429's Retry-After asks for: a worker must not hang on one request */
+    const kMaxRetryWaitSec = 30;
+
+    /**
+     * Whether a failed answer may succeed when asked again: no answer at all (connection, timeout), a timeout or a
+     * rate limit from the server, or a server error. Any other code - 400, 404, a 204 "nothing" - is the answer, and
+     * asking again only adds load.
+     */
+    public static function IsTransient(?int $code): bool
+    {
+        return !$code || $code == 408 || $code == 429 || $code >= 500;
+    }
+
+    /**
+     * Seconds to wait before the next try: what a 429 asks for (Retry-After, or RateLimit-Reset as TzKT Pro sends),
+     * else 3, 6, 12... seconds; capped at kMaxRetryWaitSec.
+     */
+    private static function RetryWait(int $iteration, ?int $code, array $responseHeaders): int
+    {
+        $wait = 3 * 2 ** ($iteration - 1);
+
+        if ($code == 429)
+            foreach (['retry-after', 'ratelimit-reset'] as $name)
+                if (isset($responseHeaders[$name]) && ctype_digit($responseHeaders[$name]))
+                {
+                    $wait = max(1, (int) $responseHeaders[$name]);
+                    break;
+                }
+
+        return min($wait, self::kMaxRetryWaitSec);
+    }
+
     //------------------------------------------------------------------------------------------------------------------
 
     /** Sent with every outbound request; see CURLOPT_USERAGENT below for why it has to be there. */
     const kUserAgent = 'CryptoNoises/1.0 (+https://github.com/teia-community/CryptoNoises)';
 
-    private static function RequestData(string $url, string $method, $postData=null, ?array $headers=null): SyncResult
+    private static function RequestData(string $url, string $method, $postData = null, array $headers = [],
+                                        int $maxIterations = 3, int $timeoutSec = 60): SyncResult
     {
         $iteration = 1;
-        $maxIterations = 3;
+        $responseHeaders = [];
 
         $curlOptions = [
             CURLOPT_URL                         => $url,
             CURLOPT_HEADER                      => 0,
             CURLOPT_RETURNTRANSFER              => true,
             CURLOPT_FOLLOWLOCATION              => true,
-            CURLOPT_TIMEOUT                     => 60,
+            CURLOPT_TIMEOUT                     => $timeoutSec,
+            CURLOPT_CONNECTTIMEOUT              => min(10, $timeoutSec),
+
+            // Accept every compression curl supports: TzKT pages of 10,000 items shrink about tenfold
+            CURLOPT_ENCODING                    => '',
+
+            // Response headers, lower-cased, for a 429's Retry-After
+            CURLOPT_HEADERFUNCTION              => static function ($ch, string $line) use (&$responseHeaders): int {
+                if (str_contains($line, ':'))
+                {
+                    [$name, $value] = explode(':', $line, 2);
+                    $responseHeaders[strtolower(trim($name))] = trim($value);
+                }
+
+                return strlen($line);
+            },
 
             // PHP's curl sends no User-Agent at all unless one is set, and services increasingly refuse that.
             // CoinGecko answers such a request with HTTP 403 and "Please add a descriptive User-Agent to your
@@ -62,6 +115,8 @@ class AbstractVendor
 
         while (true)
         {
+            $responseHeaders = [];
+
             $ch = curl_init();
             curl_setopt_array($ch,$curlOptions);
 
@@ -83,11 +138,11 @@ class AbstractVendor
 
             // On a stop, hand back the failure rather than sleeping and retrying through an outage: callers
             // already treat a failed SyncResult as an ordinary failure
-            if ($iteration == $maxIterations || \CryptoCore\Process\Shutdown::Requested())
+            if ($iteration >= $maxIterations || !self::IsTransient($code) || \CryptoCore\Process\Shutdown::Requested())
                 break;
 
+            sleep(self::RetryWait($iteration, $code, $responseHeaders));
             $iteration++;
-            sleep(3);
         }
         return $result;
     }

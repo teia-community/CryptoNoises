@@ -682,6 +682,21 @@ earned a plain `HTTP 429` within minutes, which surfaces as `Cannot get bigmap d
 index at any scale, run your own TzKT and point this at it - that is also what makes a full sync from block 1
 realistic.
 
+What the client does to follow TzKT's API terms and docs:
+
+- **Attribution.** The free tier (up to 10 calls a second and 500,000 a day) requires it; the bots' help screen
+  says "Data provided by TzKT API" with a link to tzkt.io.
+- **TzKT Pro.** Set `TEZOS_TZKT_API_KEY` and the key goes out as the `apikey` header, as TzKT advises over the
+  query string, and only to the configured TzKT URLs.
+- **Retries.** Only what can succeed when asked again is retried: no answer, 408, 429 and 5xx. A 429 waits for
+  what its `Retry-After` or `RateLimit-Reset` asks, at most 30 s; anything else waits 3, then 6 s. Other answers
+  (400, 404, a 204) are final. Responses are requested gzip-compressed.
+- **Paging** by id cursor (`id.gt`, sorted by id), never by offset, and `select` where only some fields are needed.
+- **Finality.** The sync stays two levels behind TzKT's head: a Tezos block is final once two more sit on top of
+  it, and TzKT reorganises the levels above. Once caught up, it looks at the head every 3 s - blocks come every 6 s.
+- **A TzKT that stalls** still answers, with old data. Baker alerts, which are about now, check `/head` first and
+  skip the pass while TzKT reports `synced: false` or its head block is over three minutes old.
+
 This is the thing to keep in mind when scaling `worker-*`: **the ceiling is your TzKT and IPFS quota, not the
 host's CPU.** With a TzKT of its own, the test stand ran 42 queue workers, 6 sequential stages and the scheduler -
 49 PHP processes, 14 MiB each on average - with no restarts and all three stages sitting at the chain head. Pointing

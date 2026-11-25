@@ -91,6 +91,9 @@ return [
         // TzKT that account aliases are read from when tzkt_api_url has none (a self-hosted TzKT has none)
         'tzkt_aliases_url'          => $env('TEZOS_TZKT_ALIASES_URL', 'https://api.tzkt.io/v1'),
 
+        // TzKT Pro API key (sent as the `apikey` header); empty for the free tier
+        'tzkt_api_key'              => $env('TEZOS_TZKT_API_KEY', ''),
+
         // A Tezos node's RPC, for bakers' DAL participation. A few requests per baker alert pass.
         'rpc_url'                   => $env('TEZOS_RPC_URL', 'https://rpc.tzkt.io/mainnet'),
 

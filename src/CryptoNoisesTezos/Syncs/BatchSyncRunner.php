@@ -70,9 +70,10 @@ final class BatchSyncRunner
 
             if ($levelTo === null)
             {
-                // Caught up with the head: keeps the heartbeat going while there is nothing to sync
+                // Caught up with the head: keeps the heartbeat going while there is nothing to sync. Each pass asks
+                // TzKT for its head, so not more often than half a block time
                 $this->progress->report($level - 1, $this->lastLevelInBlockchain);
-                sleep(1);
+                sleep(3);
                 continue;
             }
 
