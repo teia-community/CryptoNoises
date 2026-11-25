@@ -327,6 +327,7 @@ INSERT INTO `marketplaces` (`marketplace_address`, `collection_address`, `create
   ('KT1QsaxAbhfmuBC1zpRSds9F2scoJ334sQex', '', 'auto', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', '2024-01-01 14:12:05'),
   ('KT1Qt8bLFWbTiJ7DChQooBmab1MMHTx9uo8U', '', 'auto', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', '2022-10-20 22:56:38'),
   ('KT1QtnHR8p2hBjUhPRy9BCWgy7s7L578PA7N', '', 'manual', '8bidou', 'token/8bidou-24rgb', NULL, NULL, NULL, NULL, 'user/8bidou-24rgb', 'collection/8bidou/24rgb', '24x24 RGB', '2022-09-16 09:53:52'),
+  ('KT1QwCe5eY8SnvWKpg7foZ7pMvNmxikFZ9wR', '', 'manual', 'aleatory·art', 'token/objkt-com', NULL, NULL, NULL, NULL, 'user/objkt-com', 'collection/objkt-com', 'aleatory.art marketplace; mints are on per-artwork generator contracts', '2026-11-25 12:00:00'),
   ('KT1QxLqukyfohPV5kPkw97Rs6cw1DDDvYgbB', '', 'auto', 'QuipuSwap hDAO', NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', '2022-07-02 03:26:03'),
   ('KT1R7WEtNNim3YgkxPt8wPMczjH3eyhbJMtz', '', 'auto', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', '2023-04-25 22:31:57'),
   ('KT1RE81JDz4vLiExGyaQeQaicHAjdVfveqkL', '', 'auto', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', '2022-11-21 02:07:05'),
