@@ -301,6 +301,17 @@ class Tzkt extends AbstractVendor
      * Current value of one bigmap key, or null when the key does not exist or TzKT did not answer. Core data, so any
      * TzKT serves it, a self-hosted one included.
      */
+    /** Active keys of a contract's bigmap, by its storage path: key => value. Null when TzKT did not answer. */
+    public static function GetContractBigmapKeys(string $contract, string $path): ?array
+    {
+        $result = self::GetDataJson(self::api()."/contracts/$contract/bigmaps/$path/keys?active=true&select=key,value&limit=".self::kMAX_ITEMS_PER_REQUEST);
+
+        if (!$result->isSuccess() || !is_array($result->data))
+            return null;
+
+        return array_column($result->data, 'value', 'key');
+    }
+
     public static function GetBigmapKeyValue(int $bigmap, string $key): ?array
     {
         $result = self::GetDataJson(self::api()."/bigmaps/$bigmap/keys?key=".rawurlencode($key)."&select=value&limit=1");

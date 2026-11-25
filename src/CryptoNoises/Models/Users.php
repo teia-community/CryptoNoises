@@ -96,6 +96,12 @@ class Users extends VssModel
 
     //------------------------------------------------------------------------------------------------------------------
 
+    /** @return array[] platform, user_id of every active user */
+    public function getActiveUsers(): array
+    {
+        return Vss::db()->query("SELECT platform, user_id FROM {$this->tableName()} WHERE status = :s", ['s' => self::kSTATUS_Active]);
+    }
+
     public function getActiveUsersByWalletAdid($walletAdid): array
     {
         $sql = "

@@ -56,6 +56,7 @@ abstract class NotificationType
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     const DomainExpires                     = 'domain-expires';
+    const TeiaEvent                         = 'teia-event';
     const DomainExpired                     = 'domain-expired';
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
