@@ -95,6 +95,13 @@ class BakerAlerts extends AbstractCommand
      */
     public function passOnce(?array $period = null, ?array $proposals = null, ?array $voters = null): int
     {
+        // These alerts are about now: from a TzKT that stalls, missed rights would read as none and governance as
+        // unchanged, so a pass waits until TzKT is back at the head
+        $state = Tzkt::GetState();
+
+        if (($reason = Tzkt::NotAtHeadReason($state)) !== null)
+            throw new Exception("pass skipped: $reason");
+
         $this->parser      = new TezosNetworkParser();
         $this->uniqueId    = Time::Time();
         $this->uniqueSubId = 0;
@@ -105,8 +112,8 @@ class BakerAlerts extends AbstractCommand
         if ($bakers === null)
             throw new Exception("TzKT did not answer: which watched wallets are bakers");
 
-        $sent  = $this->missedRights($bakers);
-        $sent += $this->dalParticipation($bakers);
+        $sent  = $this->missedRights($bakers, (int) $state['level']);
+        $sent += $this->dalParticipation($bakers, (int) $state['cycle']);
         $sent += $this->governance($bakers, $period, $proposals, $voters);
 
         $this->parser->save();
@@ -126,15 +133,10 @@ class BakerAlerts extends AbstractCommand
      * once it has missed the threshold again, and the same miss is never reported twice. A trickle slower than the
      * threshold per hour never alerts, which is the point.
      */
-    private function missedRights(array $bakers): int
+    private function missedRights(array $bakers, int $head): int
     {
         if (!$bakers)
             return 0;
-
-        $head = Tzkt::GetBlockLastIndex();
-
-        if ($head === null)
-            throw new Exception("TzKT did not answer: no head level");
 
         // The hour is taken by time, not as a count of blocks: the block time is a protocol constant that upgrades
         // change (60 s at launch, 6 s now), and an hour may straddle such an upgrade
@@ -205,17 +207,11 @@ class BakerAlerts extends AbstractCommand
      * can still be saved - once per cycle - and again if it recovers; and once if the baker was denounced. Waits for
      * kDAL_MIN_ATTESTABLE attestable slots: early in a cycle a single miss reads as insufficient.
      */
-    private function dalParticipation(array $bakers): int
+    private function dalParticipation(array $bakers, int $cycle): int
     {
         if (!$bakers)
             return 0;
 
-        $head = Tzkt::GetHead();
-
-        if ($head === null)
-            throw new Exception("TzKT did not answer: no head");
-
-        $cycle = (int) $head['cycle'];
         $ratio = TezosRpc::GetConstants()['minimal_participation_ratio'] ?? ['numerator' => 2, 'denominator' => 3];
         $sent  = 0;
 

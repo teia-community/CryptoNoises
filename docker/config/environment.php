@@ -91,8 +91,15 @@ return [
         // TzKT that account aliases are read from when tzkt_api_url has none (a self-hosted TzKT has none)
         'tzkt_aliases_url'          => $env('TEZOS_TZKT_ALIASES_URL', 'https://api.tzkt.io/v1'),
 
-        // A Tezos node's RPC, for bakers' DAL participation. A few requests per baker alert pass.
-        'rpc_url'                   => $env('TEZOS_RPC_URL', 'https://rpc.tzkt.io/mainnet'),
+        // TzKT Pro API key (sent as the `apikey` header); empty for the free tier
+        'tzkt_api_key'              => $env('TEZOS_TZKT_API_KEY', ''),
+
+        // A caught-up sync waits for the next block on TzKT's WebSocket instead of polling /head
+        'tzkt_websocket'            => $envBool('TEZOS_TZKT_WEBSOCKET', true),
+
+        // Tezos node RPCs, comma-separated, for bakers' DAL participation and protocol constants. Several, so one
+        // falling behind or failing is skipped (Vendors/TezosRpc.php); earlier ones are preferred.
+        'rpc_urls'                  => $env('TEZOS_RPC_URLS', 'https://rpc.tzkt.io/mainnet,https://rpc.tzbeta.net,https://mainnet.smartpy.io'),
 
         // Gateway used to read token metadata and media
         'ipfs_gateway_url'          => $env('TEZOS_IPFS_GATEWAY_URL', 'https://ipfs.io/ipfs/'),

@@ -34,6 +34,11 @@ final class BatchSyncRunner
 
     private ProgressLog $progress;
 
+    // Once caught up, the next block is waited for on TzKT's WebSocket rather than polled for
+    private ?Vendors\TzktHeadStream $headStream = null;
+    const kHEAD_WAIT_SEC        = 10;
+    const kHEAD_POLL_SEC        = 3;
+
     public function __construct(FixerAbstract $fixer, LevelSyncInterface $sync, callable $log)
     {
         $this->fixer    = $fixer;
@@ -72,7 +77,7 @@ final class BatchSyncRunner
             {
                 // Caught up with the head: keeps the heartbeat going while there is nothing to sync
                 $this->progress->report($level - 1, $this->lastLevelInBlockchain);
-                sleep(1);
+                $this->waitForNextBlock();
                 continue;
             }
 
@@ -205,6 +210,29 @@ final class BatchSyncRunner
 
     //------------------------------------------------------------------------------------------------------------------
 
+    /**
+     * Waits for TzKT's next block: pushed over its WebSocket when that is available, and then known without asking
+     * /head; else polled - getRangeEnd() asks /head on the next pass, every kHEAD_POLL_SEC (half a block time).
+     */
+    private function waitForNextBlock(): void
+    {
+        if (!Config::cfg()->tzktWebsocket)
+        {
+            sleep(self::kHEAD_POLL_SEC);
+            return;
+        }
+
+        $this->headStream ??= new Vendors\TzktHeadStream($this->log);
+
+        $known = $this->lastLevelInBlockchain + Config::kSYNC_BLOCK_BEHIND;
+        $head  = $this->headStream->waitForHeadAbove($known, self::kHEAD_WAIT_SEC);
+
+        if ($head === null)
+            sleep(self::kHEAD_POLL_SEC);
+        else if ($head > $known)
+            $this->lastLevelInBlockchain = $head - Config::kSYNC_BLOCK_BEHIND;
+    }
+
     private function getNextLevel(): ?int
     {
         $level = $this->fixer->getNextLevelToProcess();
@@ -233,7 +261,7 @@ final class BatchSyncRunner
 
         if ($level > $this->lastLevelInBlockchain)
         {
-            ($this->log)("Want to sync level #$level, but last synced level is #{$this->lastLevelInBlockchain}. Wait 1 sec and try again..");
+            ($this->log)("Want to sync level #$level, but the last level to sync is #{$this->lastLevelInBlockchain}: waiting for the next block");
             return null;
         }
 

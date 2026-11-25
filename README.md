@@ -682,6 +682,26 @@ earned a plain `HTTP 429` within minutes, which surfaces as `Cannot get bigmap d
 index at any scale, run your own TzKT and point this at it - that is also what makes a full sync from block 1
 realistic.
 
+What the client does to follow TzKT's API terms and docs:
+
+- **Attribution.** The free tier (up to 10 calls a second and 500,000 a day) requires it; the bots' help screen
+  says "Data provided by TzKT API" with a link to tzkt.io.
+- **TzKT Pro.** Set `TEZOS_TZKT_API_KEY` and the key goes out as the `apikey` header, as TzKT advises over the
+  query string, and only to the configured TzKT URLs.
+- **Retries.** Only what can succeed when asked again is retried: no answer, 408, 429 and 5xx. A 429 waits for
+  what its `Retry-After` or `RateLimit-Reset` asks, at most 30 s; anything else waits 3, then 6 s. Other answers
+  (400, 404, a 204) are final. Responses are requested gzip-compressed.
+- **Paging** by id cursor (`id.gt`, sorted by id), never by offset, and `select` where only some fields are needed.
+- **Finality.** The sync stays two levels behind TzKT's head: a Tezos block is final once two more sit on top of
+  it, and TzKT reorganises the levels above.
+- **Real time over the WebSocket API,** as TzKT recommends. A caught-up sync waits for the next block on
+  `<TEZOS_TZKT_API_URL>/ws` (SignalR's JSON protocol, `SubscribeToHead`; ReactPHP and Pawl, which the Discord bot
+  already uses) and picks it up within a fraction of a second, without asking `/head`. When the socket cannot be
+  opened or drops - a reverse proxy in front of a self-hosted TzKT must pass WebSocket upgrades - it polls `/head`
+  every 3 s (half a block time) and tries the socket again every minute. `TEZOS_TZKT_WEBSOCKET=0` always polls.
+- **A TzKT that stalls** still answers, with old data. Baker alerts, which are about now, check `/head` first and
+  skip the pass while TzKT reports `synced: false` or its head block is over three minutes old.
+
 This is the thing to keep in mind when scaling `worker-*`: **the ceiling is your TzKT and IPFS quota, not the
 host's CPU.** With a TzKT of its own, the test stand ran 42 queue workers, 6 sequential stages and the scheduler -
 49 PHP processes, 14 MiB each on average - with no restarts and all three stages sitting at the chain head. Pointing
@@ -842,8 +862,10 @@ rights, DAL & governance"):
 
 The last three come from `bots-baker-alerts` (profile `bots`, `run /tezos-network/baker-alerts`), which polls TzKT
 every ten minutes: they are about now, and the indexer may be days behind the head. DAL participation and the
-protocol constants (DAL ratio, cycle length; re-read every ten minutes) come from a node's RPC, `TEZOS_RPC_URL` (a
-public one by default; a self-hosted TzKT has no such endpoint). Voting period ends are given as a time and as the
+protocol constants (DAL ratio, cycle length; re-read every ten minutes) come from Tezos node RPCs,
+`TEZOS_RPC_URLS` (three public ones by default; a self-hosted TzKT has no such endpoint). Every minute their heads
+are compared, and a node more than two levels behind the best, or one that fails, is skipped until the next
+comparison; earlier ones are preferred. Voting period ends are given as a time and as the
 cycle and level they fall on. Missed rights are counted a few levels short of the head, where a right's outcome is
 final, over the hour by the clock (the level an hour ago comes from TzKT: block times change with protocol upgrades,
 60 s at launch and 6 s now); the highest level reported to each user is kept in `config`

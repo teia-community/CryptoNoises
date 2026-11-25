@@ -22,6 +22,61 @@ class Tzkt extends AbstractVendor
         return Config::cfg()->tzktApiUrl;
     }
 
+    /**
+     * Every request to TzKT goes through here: a TzKT Pro key (tezos.tzkt_api_key) is sent as the `apikey` header -
+     * TzKT's docs advise the header over the query string, which can leak into logs - and only to the configured
+     * TzKT URLs.
+     */
+    public static function GetData(string $url, array $headers = [], int $attempts = 3, int $timeoutSec = 60): \CryptoCore\Http\SyncResult
+    {
+        return parent::GetData($url, array_merge($headers, self::AuthHeaders($url)), $attempts, $timeoutSec);
+    }
+
+    private static function AuthHeaders(string $url): array
+    {
+        $key = Config::cfg()->tzktApiKey;
+
+        if ($key === '')
+            return [];
+
+        foreach ([Config::cfg()->tzktApiUrl, Config::cfg()->tzktAliasesUrl] as $base)
+            if ($base !== '' && str_starts_with($url, "$base/"))
+                return ["apikey: $key"];
+
+        return [];
+    }
+
+    /**
+     * TzKT's own state (/head): level, cycle, timestamp, and whether its indexer keeps up - `synced`, and
+     * `knownLevel`, the last level its node knows. Null when TzKT did not answer.
+     */
+    public static function GetState(): ?array
+    {
+        $result = self::GetDataJson(self::api()."/head");
+
+        return $result->isSuccess() && isset($result->data['level']) ? $result->data : null;
+    }
+
+    /**
+     * Why TzKT cannot be trusted to be at the chain's head right now, or null when it can: its indexer reports it is
+     * not synced, or its head block is more than $maxAgeSec old - a stalled TzKT still answers, with old data.
+     */
+    public static function NotAtHeadReason(?array $state, int $maxAgeSec = 180): ?string
+    {
+        if ($state === null)
+            return 'TzKT did not answer';
+
+        if (isset($state['synced']) && $state['synced'] === false)
+            return "TzKT is not synced (level {$state['level']}, its node knows {$state['knownLevel']})";
+
+        $age = time() - strtotime($state['timestamp'] ?? '');
+
+        if ($age > $maxAgeSec)
+            return "TzKT's head (level {$state['level']}) is {$age} s old";
+
+        return null;
+    }
+
     public static function GetAccountDetails(string $contract): ?array
     {
             $result = self::GetDataJson(self::api()."/accounts/$contract");
@@ -38,11 +93,12 @@ class Tzkt extends AbstractVendor
 
     //------------------------------------------------------------------------------------------------------------------
 
+    /** The head level TzKT has indexed (/head, a cheap read of its state, rather than counting blocks) */
     public static function GetBlockLastIndex(): ?int
     {
-        $result = self::GetDataJson(self::api()."/blocks/count");
+        $state = self::GetState();
 
-        return $result->isSuccess() ? (int)($result->data)-1 : null;
+        return $state !== null ? (int) $state['level'] : null;
     }
 
     public static function GetBlockDetails(int $level): ?array
@@ -52,11 +108,25 @@ class Tzkt extends AbstractVendor
         return $result->isSuccess() ? $result->data : null;
     }
 
+    /** All bigmap updates of a level, paged by id: one level can hold more than a page */
     public static function GetBlockBigmapUpdates(int $level): ?array
     {
-        $result = self::GetDataJson(self::api()."/bigmaps/updates?level=$level&limit=".self::kMAX_ITEMS_PER_REQUEST);
+        $updates = [];
+        $idAfter = null;
 
-        return $result->isSuccess() ? $result->data : null;
+        do
+        {
+            $page = self::GetLevelRangePage('bigmaps/updates', $level, $level, self::kMAX_ITEMS_PER_REQUEST, $idAfter);
+
+            if ($page === null)
+                return null;
+
+            array_push($updates, ...$page);
+            $idAfter = $page ? end($page)['id'] : null;
+        }
+        while (count($page) == self::kMAX_ITEMS_PER_REQUEST);
+
+        return $updates;
     }
 
     /**
@@ -300,14 +370,6 @@ class Tzkt extends AbstractVendor
         return $result->isSuccess() && is_numeric($result->data) ? (int) $result->data : null;
     }
 
-    /** The head block: level, cycle, timestamp... Null when TzKT did not answer. */
-    public static function GetHead(): ?array
-    {
-        $result = self::GetDataJson(self::api()."/head");
-
-        return $result->isSuccess() && isset($result->data['level'], $result->data['cycle']) ? $result->data : null;
-    }
-
     public static function GetCurrentVotingPeriod(): ?array
     {
         $result = self::GetDataJson(self::api()."/voting/periods/current");
@@ -371,6 +433,8 @@ class Tzkt extends AbstractVendor
         // The list endpoint: /accounts/{address} ignores select and answers the whole account (kilobytes)
         $ch = curl_init("$base/accounts?address=$address&select=alias");
         curl_setopt_array($ch, [
+            CURLOPT_HTTPHEADER      => self::AuthHeaders("$base/accounts"),
+            CURLOPT_ENCODING        => '',
             CURLOPT_RETURNTRANSFER  => true,
             CURLOPT_CONNECTTIMEOUT  => 3,
             CURLOPT_TIMEOUT         => 5,
