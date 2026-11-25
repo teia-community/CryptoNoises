@@ -158,6 +158,20 @@ class DiscordBotGate extends AbstractBot implements AbstractBotGate
     }
 
     /**
+     * @return array<int, array{string, string}> per row id: status, note
+     * @throws NotificationSendFailedException
+     */
+    public function notifyEventDigest(array $rows, callable $onDeliveryFailed): array
+    {
+        [$notification, $results] = $this->doNotifyEventDigest($this->dcBotConnection->user, $rows);
+
+        if ($notification !== null)
+            $this->dcBotConnection->deliverBotNotifications($notification, $onDeliveryFailed);
+
+        return $results;
+    }
+
+    /**
      * @param callable $onDeliveryFailed function (string $reason): void - called when Discord rejects the send later
      * @throws NotificationSendFailedException
      */

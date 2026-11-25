@@ -52,6 +52,9 @@ class DiscordNotifierThread extends DiscordAbstractThread
 
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+        if (!empty($notificationItem['notify_after']))
+            return $this->processEventDigest((int) $notificationItem['user_id']);
+
         $tsTaskStart = Time::Microtime();
         $notificationId = $notificationItem['event_notification_id'];
         $resultNote = '';
@@ -99,6 +102,43 @@ class DiscordNotifierThread extends DiscordAbstractThread
 
         $this->discord->getLogger()->notice("Sent event > $status $resultNote");
         return $notificationId;
+    }
+
+    /** All of a digest user's due rows, as one message */
+    private function processEventDigest(int $userId): ?int
+    {
+        $queue   = Models\EventsNotifications::model();
+        $tsStart = Time::Microtime();
+        $rows    = $queue->getDueDigestRows(Config::kPLATFORM_Discord, $userId);
+
+        foreach ($rows as $row)
+            $queue->updateNotifyStatus(Config::kPLATFORM_Discord, $row['event_notification_id'], $queue::kNotifyStatus_Active);
+
+        try
+        {
+            $botGate = DiscordBotGate::NewByUserId($this->discord, $userId);
+
+            if ($botGate === null)
+                throw new Exception('Cannot initialize DiscordBotGate by userId#'.$userId);
+
+            $results = !$botGate->isRecipientActive()
+                ? array_fill_keys(array_column($rows, 'event_notification_id'), [$queue::kNotifyStatus_Skipped, 'User is frozen'])
+                : $botGate->notifyEventDigest($rows, function (string $reason) use ($queue, $rows)
+                {
+                    foreach ($rows as $row)
+                        $queue->updateNotifyStatus(Config::kPLATFORM_Discord, $row['event_notification_id'], $queue::kNotifyStatus_Error, null, $reason);
+                });
+        }
+        catch (Exception $e)
+        {
+            $results = array_fill_keys(array_column($rows, 'event_notification_id'), [$queue::kNotifyStatus_Error, $e->getMessage()]);
+        }
+
+        foreach ($results as $id => [$status, $note])
+            $queue->updateNotifyStatus(Config::kPLATFORM_Discord, $id, $status, Time::Microtime() - $tsStart, $note);
+
+        $this->discord->getLogger()->notice('Sent digest: '.count($rows).' notification(s)');
+        return $rows ? (int) $rows[0]['event_notification_id'] : null;
     }
 
     private function processInformNotification(): ?int

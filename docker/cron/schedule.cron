@@ -32,6 +32,7 @@ SHELL=/bin/bash
 #=======================================================================================================================
 */1  *  *  *  *  /usr/local/bin/cn-cron /opt/cryptonoises/commands/run /jobs/recover-dead-jobs
 */1  *  *  *  *  /usr/local/bin/cn-cron /opt/cryptonoises/commands/run /lifecycle/check/error-logs
+*/5  *  *  *  *  /usr/local/bin/cn-cron /opt/cryptonoises/commands/run /lifecycle/check/stalls
 */1  *  *  *  *  /usr/local/bin/cn-cron /opt/cryptonoises/commands/run /lifecycle/clean-up/user-actions
 */10 *  *  *  *  /usr/local/bin/cn-cron /opt/cryptonoises/commands/run /lifecycle/clean-up/events-flow
 */30 *  *  *  *  /usr/local/bin/cn-cron /opt/cryptonoises/commands/run /lifecycle/clean-up/callback-actions

@@ -7,6 +7,7 @@ use CryptoNoises\Core\Log;
 use CryptoCore\Vss\Vss;
 use CryptoCore\Vss\VssModel;
 use CryptoCore\Vss\VssDbExp;
+use CryptoNoises\Enum;
 
 class EventsNotifications extends VssModel
 {
@@ -45,6 +46,8 @@ class EventsNotifications extends VssModel
                                      string $notificationType,
                                      string $note='')
     {
+        $digestMinutes = Enum\NotificationType::IsDigestible($notificationType) ? self::DigestMinutes($userId) : 0;
+
         $item = [
             'user_id'               => $userId,
             'owner_adid'            => $ownerAdid,
@@ -54,7 +57,34 @@ class EventsNotifications extends VssModel
             'notification_type'     => $notificationType,
             'note'                  => $note,
         ];
+
+        // Due at the end of the user's current digest window (windows aligned on the clock)
+        if ($digestMinutes > 0)
+            $item['notify_after'] = VssDbExp::query('FROM_UNIXTIME(CEIL(UNIX_TIMESTAMP() / '.($digestMinutes * 60).') * '.($digestMinutes * 60).')');
+
         return Vss::db()->insert($this->tableName($platform), $item);
+    }
+
+    /** @var array<int, array{int, int}> user => [digest minutes, read at], per process */
+    private static array $digestMinutes = [];
+
+    private static function DigestMinutes(int $userId): int
+    {
+        if (!isset(self::$digestMinutes[$userId]) || time() - self::$digestMinutes[$userId][1] > 60)
+        {
+            $minutes = (int) Vss::db()->queryScalar("SELECT digest_minutes FROM options_notifier WHERE user_id = :u AND wallet_adid = 0", ['u' => $userId]);
+            self::$digestMinutes[$userId] = [$minutes, time()];
+        }
+
+        return self::$digestMinutes[$userId][0];
+    }
+
+    /** A digest user's rows that are due, oldest first */
+    public function getDueDigestRows(string $platform, int $userId): array
+    {
+        return Vss::db()->query("SELECT * FROM {$this->tableName($platform)}
+            WHERE user_id = :u AND notify_status = :idle AND notify_after IS NOT NULL AND notify_after <= NOW()
+            ORDER BY event_notification_id", ['u' => $userId, 'idle' => self::kNotifyStatus_Idle]);
     }
 
     public function updateNotifyStatus(string $platform, $eventNotificationId, $status, $execTime=null, $note=null)
@@ -80,7 +110,7 @@ class EventsNotifications extends VssModel
         $sql = "
             SELECT *
             FROM {$this->tableName($platform)}
-            WHERE notify_status = :notify_status
+            WHERE notify_status = :notify_status AND (notify_after IS NULL OR notify_after <= NOW())
             ORDER BY priority_index ASC, event_notification_id ASC
             LIMIT 1 
         ";

@@ -61,6 +61,20 @@ abstract class NotificationType
     const TeiaMultisigReminder              = 'teia-multisig-reminder';
     const TeiaDaoProposal                   = 'teia-dao-proposal';
     const TeiaPoll                          = 'teia-poll';
+
+    /** Routine wallet activity a digest may bundle; alerts, reminders, messages and outbids always go out at once */
+    public static function IsDigestible(string $type): bool
+    {
+        return in_array($type, [
+            self::Income, self::Expense,
+            self::TokenMint, self::TokenMint_Income, self::TokenMint_Income_Ticket, self::TokenMint_Expense, self::TokenMint_Expense_Ticket,
+            self::TokenList, self::TokenUpdateMetadata, self::DropBuy, self::DropSold,
+            self::TokenBuy, self::TokenSell, self::TokenRoyalty, self::TokenPurchaseStoreFee,
+            self::TokenReceive, self::TokenSend, self::TokenOffer, self::CollectionOffer,
+            self::AuctionStart, self::AuctionEnd_NoWinner, self::AuctionCancel, self::AuctionBid, self::AuctionOwnerInfo,
+            self::BakerDelegatorJoined, self::BakerDelegatorLeft, self::BakerStakerStake, self::BakerStakerUnstake,
+        ], true);
+    }
     const DomainExpired                     = 'domain-expired';
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

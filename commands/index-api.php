@@ -42,6 +42,7 @@ $f3->route('GET /jobs/recover-dead-jobs',                       'CryptoNoises\Co
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+$f3->route('GET /lifecycle/check/stalls',                       'CryptoNoises\Commands\StallCheck->run');
 $f3->route('GET /lifecycle/check/error-logs',                   'CryptoNoises\Commands\Lifecycles->checkErrorLogs');
 $f3->route('GET /lifecycle/clean-up/callback-actions',          'CryptoNoises\Commands\Lifecycles->cleanUpCallbackActions');
 $f3->route('GET /lifecycle/clean-up/events-flow',               'CryptoNoises\Commands\Lifecycles->cleanUpEventsFlow');

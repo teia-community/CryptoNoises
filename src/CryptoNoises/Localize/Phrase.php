@@ -85,6 +85,8 @@ class Phrase
     public string $finalizeReminder                     = '⏰ Finalize reminder';
     public string $finalizeReminderInfo                 = 'When unstaked tez can be finalized but still are not, remind me:';
 
+    public string $digest                               = '📬 Digest';
+    public string $digestInfo                           = 'Bundle routine wallet activity (payments, NFT transfers, sales, offers…) into one message per period. Alerts, reminders and messages still come at once:';
     public string $missedAttestations                   = '🚨 Missed attestations';
     public string $missedAttestationsInfo               = 'For bakers: alert me when my baker misses at least this many attestations within an hour (missed blocks always alert):';
 
@@ -183,6 +185,16 @@ class Phrase
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     /** Label of a missed-attestations choice (OptionsNotifier::kMissedAttestationsOff = off) */
+    public static function Digest(int $minutes): string
+    {
+        return match (true) {
+            $minutes <= 0   => 'Off',
+            $minutes < 60   => "Every $minutes min",
+            $minutes == 60  => 'Every hour',
+            default         => 'Every '.intdiv($minutes, 60).' hours',
+        };
+    }
+
     public static function MissedAttestations(int $count): string
     {
         if ($count <= 0)
