@@ -313,6 +313,7 @@ Both copied files are gitignored. Fill them in as described below.
 | `api.discord.*` | Optional Discord channel ids: auto-join channels and "missed message" channel. |
 | `api.channel_user_ids.*` | Optional broadcast feeds (see comments in the example file). |
 | `tezos.ipfs_gateway_url` | IPFS gateway that token metadata and media are read through (default `https://ipfs.io/ipfs/`). See [IPFS gateway](#ipfs-gateway). |
+| `tezos.ipfs_fetch_gateway_url` | Gateway that metadata and media are fetched through first, e.g. the `ipfs` sidecar; `ipfs_gateway_url` is the fallback. Never stored or sent. See [Running your own IPFS node](#running-your-own-ipfs-node). |
 | `tezos.ipfs_local_base_url` / `tezos.ipfs_local_base_path` | Where media previews are stored and from which URL they are served. |
 | `tezos.private_storage_base_path` | Storage for downloaded originals. |
 | `tezos.cmd_imagemagick_convert`, `tezos.cmd_ffmpeg` | Paths to external tools. |
@@ -746,6 +747,35 @@ If you see that, you are being throttled, not hitting a bug - point the setting 
 With a working gateway the same tokens went through on the first attempt.
 
 This is separate from `tezos.ipfs_local_base_url`, which is where *your* generated previews are served from.
+
+#### Running your own IPFS node
+
+The compose file has an optional IPFS node (kubo) for the workers to fetch through instead of a public gateway:
+
+```sh
+# .env: TEZOS_IPFS_FETCH_GATEWAY_URL=http://ipfs:8080/ipfs/
+docker compose --profile ipfs up -d ipfs
+docker compose up -d        # recreate the workers, so they read the new setting
+```
+
+- **Fetch only.** `TEZOS_IPFS_FETCH_GATEWAY_URL` is used to download and nothing else. Metadata and media go through
+  it first and through `TEZOS_IPFS_GATEWAY_URL` when it fails, and a gateway URL written on chain
+  (`https://<gateway>/ipfs/<cid>`) is fetched through it too. Every URL that is stored or sent to users (contract
+  images, say) keeps `TEZOS_IPFS_GATEWAY_URL`, since users' clients must be able to load it.
+- **Garbage collection keeps it from filling the disk.** Nothing is pinned, so everything it holds is cache. kubo runs
+  with `--enable-gc`; every `IPFS_GC_PERIOD` (10 min) it checks whether the repo is past `IPFS_GC_WATERMARK` (80%) of
+  `IPFS_STORAGE_MAX` (20 GB), and then deletes every block it holds. That limit is soft: between two checks the repo
+  grows by whatever the workers fetch, so keep a few GB free beyond it. The settings are applied on every start
+  (`docker/ipfs/001-cryptonoises.sh`), so change them in `.env` and restart the container.
+- **A cache, not a server.** The node uses client-only routing (`autoclient`) and announces nothing it caches. Its
+  admin API listens inside the container only; the gateway is reachable on the compose network, with no ports
+  published. It only dials out, which is enough to fetch; publish 4001 (tcp and udp) to let peers connect in.
+  `IPFS_PEERING` keeps it connected to nodes you name, such as one that holds most of what you fetch. It refuses
+  to dial private addresses, so for a peer on your own network also set `IPFS_DIAL_PRIVATE_RANGES` to its range as
+  kubo's server profile filters it (e.g. `192.168.0.0/16`).
+- **The downloader trusts its origin only.** Downloads refuse private addresses, so that an on-chain URI cannot reach
+  internal services. The fetch gateway's exact scheme, host and port are the one exception; its admin API, other
+  ports and other hosts stay blocked.
 
 ### 2. Analyze: raw log -> indexer tables
 

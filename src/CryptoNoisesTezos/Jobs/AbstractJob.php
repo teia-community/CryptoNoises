@@ -81,7 +81,6 @@ abstract class AbstractJob extends \CryptoCore\Jobs\AbstractJob
             $metadataUrl == $gateway.'[object Object]')
             throw new Exception("Bad metadata_uri: $metadataUri", JobResult::kFailedAndClose);
 
-        $metadataUrl = Ipfs::AppendUniqueTaskIdToUrl($metadataUrl, $queueTaskId);
 
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -91,7 +90,17 @@ abstract class AbstractJob extends \CryptoCore\Jobs\AbstractJob
             ? Config::cfg()->privateStorageBasePath.'/ipfs-cache/direct_'.$ipfsSafeFileName
             : null;
 
-        $jsonString = Downloader::GetDirect($metadataUrl, $cacheFullPath, 20);
+        // Through the fetch gateway first when one is set, the public gateway after it
+        $jsonString = null;
+
+        foreach (Ipfs::FetchUrls($metadataUri) as $fetchUrl)
+        {
+            $metadataUrl = Ipfs::AppendUniqueTaskIdToUrl($fetchUrl, $queueTaskId);
+            $jsonString  = Downloader::GetDirect($metadataUrl, $cacheFullPath, 20);
+
+            if ($jsonString != null)
+                break;
+        }
 
         if ($jsonString == null)
             throw new Exception("IPFS returned empty data: $metadataUrl", JobResult::kFailedAndPostpone);

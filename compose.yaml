@@ -245,6 +245,37 @@ services:
       replicas: 10
 
   #-------------------------------------------------------------------------------------------------------------------
+  # Optional IPFS node the workers fetch token metadata and media through, instead of a public gateway
+  # (profile "ipfs"; set TEZOS_IPFS_FETCH_GATEWAY_URL=http://ipfs:8080/ipfs/). A disk-bounded cache: nothing is
+  # pinned, and garbage collection keeps the repo near IPFS_STORAGE_MAX. See "IPFS gateway" in the README.
+  #-------------------------------------------------------------------------------------------------------------------
+
+  ipfs:
+    image: docker.io/ipfs/kubo:v0.43.1
+    profiles: ["ipfs"]
+    # The image's default command plus --enable-gc: without it kubo never collects on its own
+    command: ["daemon", "--migrate=true", "--agent-version-suffix=docker", "--enable-gc"]
+    environment:
+      # Server profile: no local network discovery - hosting providers report LAN probing as port scans
+      IPFS_PROFILE: server
+      IPFS_STORAGE_MAX: ${IPFS_STORAGE_MAX:-20GB}
+      IPFS_GC_WATERMARK: ${IPFS_GC_WATERMARK:-80}
+      IPFS_GC_PERIOD: ${IPFS_GC_PERIOD:-10m}
+      IPFS_PEERING: ${IPFS_PEERING:-[]}
+      IPFS_DIAL_PRIVATE_RANGES: ${IPFS_DIAL_PRIVATE_RANGES:-}
+    volumes:
+      - ipfs-data:/data/ipfs
+      - ./docker/ipfs/001-cryptonoises.sh:/container-init.d/001-cryptonoises.sh:ro
+    # No ports published: the workers reach the gateway on the compose network, and the node only dials out. Publish
+    # 4001 (tcp and udp) if you want other peers to be able to connect in.
+    healthcheck:
+      test: ["CMD", "ipfs", "--api=/ip4/127.0.0.1/tcp/5001", "id", "-f", "<id>"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+    restart: always
+
+  #-------------------------------------------------------------------------------------------------------------------
   # Bots + API. Start these only after the indexer has caught up with the chain.
   #-------------------------------------------------------------------------------------------------------------------
 
@@ -344,6 +375,7 @@ services:
 
 volumes:
   db-data:
+  ipfs-data:
   ipfs-previews:
   private-storage:
   app-logs:
