@@ -283,6 +283,30 @@ trait AbstractBot_Notification_Events
             $notification   = Notification\Transaction\BakerStakerUnstake::I($user);
             $thresholdScope = OptionsNotifier::kThresholdTransaction;
         }
+        else if ($notificationType == Enum\NotificationType::TeiaMultisigProposal)
+        {
+            $notifyFilter   = OptionsNotifier::kNotify_TeiaGovernance;
+            $notification   = Notification\TeiaMultisigProposal::I($user);
+            $thresholdScope = null;
+        }
+        else if ($notificationType == Enum\NotificationType::TeiaMultisigReminder)
+        {
+            $notifyFilter   = OptionsNotifier::kNotify_TeiaGovernance;
+            $notification   = Notification\TeiaMultisigReminder::I($user);
+            $thresholdScope = null;
+        }
+        else if ($notificationType == Enum\NotificationType::TeiaPoll)
+        {
+            $notifyFilter   = OptionsNotifier::kNotify_TeiaGovernance;
+            $notification   = Notification\TeiaPoll::I($user);
+            $thresholdScope = null;
+        }
+        else if ($notificationType == Enum\NotificationType::TeiaDaoProposal)
+        {
+            $notifyFilter   = OptionsNotifier::kNotify_TeiaGovernance;
+            $notification   = Notification\TeiaDaoProposal::I($user);
+            $thresholdScope = null;
+        }
         else if ($notificationType == Enum\NotificationType::TeiaEvent)
         {
             $notifyFilter   = OptionsNotifier::kNotify_TeiaEvents;
@@ -664,6 +688,10 @@ trait AbstractBot_Notification_Events
             case Enum\NotificationType::GovernanceProposal:
             case Enum\NotificationType::GovernanceVoteReminder:
             case Enum\NotificationType::TeiaEvent:
+            case Enum\NotificationType::TeiaMultisigProposal:
+            case Enum\NotificationType::TeiaMultisigReminder:
+            case Enum\NotificationType::TeiaDaoProposal:
+            case Enum\NotificationType::TeiaPoll:
                 break;
 
             // The delegated balance, or the tez staked / unstaked
@@ -1015,6 +1043,35 @@ trait AbstractBot_Notification_Events
 
             if (!empty($e['screenshot']) && preg_match('#^https://#', $e['screenshot']))
                 $notification->setPreviewThumbnailUrl($e['screenshot']);
+        }
+
+        if (in_array($notificationType, [Enum\NotificationType::TeiaMultisigProposal, Enum\NotificationType::TeiaMultisigReminder,
+                                         Enum\NotificationType::TeiaDaoProposal, Enum\NotificationType::TeiaPoll]))
+        {
+            $g = $customData ?? [];
+            $orHide = fn ($v) => ($v === null || $v === '') ? Notification::HIDE_ME : $v;
+
+            $notification->bind('{###PROPOSAL_ID###}',      (string) ($g['proposal_id'] ?? '?'));
+            $notification->bind('{###PROPOSAL###}',         $orHide(isset($g['summary']) ? Notification::SafeText($g['summary']) : null));
+            $notification->bind('{###PROPOSAL_TITLE###}',   $orHide(isset($g['title']) ? Notification::SafeText(mb_strimwidth($g['title'], 0, 200, '…')) : null));
+            $notification->bind('{###PROPOSAL_TEXT###}',    $orHide(isset($g['text']) ? Notification::SafeText(mb_strimwidth($g['text'], 0, 500, '…')) : null));
+            $notification->bind('{###ISSUER###}',           $orHide(isset($g['issuer']) ? Notification::SafeText(\CryptoNoisesTezos\Vendors\Tzkt::GetAlias($g['issuer']) ?? $network->getWalletShortName($g['issuer'])) : null));
+            $notification->bind('{###OPTIONS###}',          $orHide(isset($g['options']) && $g['options'] !== '' ? Notification::SafeText($g['options']) : null));
+            $notification->bind('{###VOTES###}',            $orHide(isset($g['votes']) ? "{$g['votes']} of {$g['min_votes']}" : null));
+            $notification->bind('{###ENDS###}',             $orHide(!empty($g['ends_at']) ? self::FriendlyFutureTime($g['ends_at'], null) : null));
+
+            $buttons = [match ($notificationType) {
+                Enum\NotificationType::TeiaDaoProposal => NotificationButton::Link('Vote on teia.art', \CryptoCore\Setapp\TeiaGovernance::DaoUrl),
+                Enum\NotificationType::TeiaPoll        => NotificationButton::Link('Vote on teia.art', \CryptoCore\Setapp\TeiaGovernance::PollUrl.($g['proposal_id'] ?? '')),
+                default                                => NotificationButton::Link('Open the multisig', \CryptoCore\Setapp\TeiaGovernance::MultisigUrl),
+            }];
+
+            $details = !empty($g['details_uri']) ? \CryptoNoisesTezos\Vendors\Ipfs::ConvertUriToUrl($g['details_uri']) : null;
+
+            if ($details && preg_match('#^https://#', $details))
+                $buttons[] = NotificationButton::Link('Details', $details);
+
+            $notification->appendButtonsRow($buttons);
         }
 
         if ($notificationType == Enum\NotificationType::ChatMessage)

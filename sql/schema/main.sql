@@ -391,6 +391,7 @@ CREATE TABLE IF NOT EXISTS `options_notifier` (
   `notify_auction` enum('yes','no') DEFAULT NULL,
   `notify_domains` enum('yes','no') DEFAULT NULL,
   `notify_teia_events` enum('yes','no') DEFAULT NULL,
+  `notify_teia_governance` enum('yes','no') DEFAULT NULL,
   `threshold_transaction` bigint unsigned DEFAULT NULL,
   `threshold_offer` bigint unsigned DEFAULT NULL,
   `finalize_reminder_sec` int DEFAULT NULL,
