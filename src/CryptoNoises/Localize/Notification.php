@@ -100,9 +100,10 @@ abstract class Notification
         return Config::cfg()->isDiscordPlatform();
     }
 
+    /** Telegram, and Matrix, which renders the Telegram variant (Config::usesTelegramLayout()) */
     protected static function IsTelegram(): bool
     {
-        return Config::cfg()->isTelegramPlatform();
+        return Config::cfg()->usesTelegramLayout();
     }
 
     /**
@@ -571,7 +572,12 @@ abstract class Notification
 
     protected function wrapCommand(string $slashCommand, bool $fillEndSpaces = false): string
     {
-        if (self::IsTelegram())
+        // Matrix clients take "/word" as a client command, so the bot's commands start with "!"
+        if (Config::cfg()->isMatrixPlatform())
+        {
+            return '<code>!'.$slashCommand.'</code>';
+        }
+        else if (self::IsTelegram())
         {
             return '/'.$slashCommand;
         }

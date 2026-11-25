@@ -458,6 +458,43 @@ Under Docker that check is per container, which is why each thread gets its own 
 does the supervising instead of the `*/1 * * * * bin/discord-start` cron line.
 Logs are written to `log/<Thread>-YYYYMMDD.log`.
 
+## Matrix bot
+
+A third messenger, notifications first: the same event and info notifications as on Telegram, in a direct message,
+managed with a few text commands - `!add tz1… [name]`, `!wallets`, `!summary`, `!remove`, `!stop` (pause; any message
+resumes), `!help`. A bare Tezos address is taken as `!add`. Settings such as thresholds and notification types are
+not on Matrix yet: they are menus of buttons on Telegram and Discord, and Matrix clients have no bot buttons.
+
+```sh
+# .env: MATRIX_USER=@bot:example.org  MATRIX_PASSWORD=...  MATRIX_HOMESERVER_URL=https://matrix.example.org
+docker compose --profile matrix up -d
+```
+
+- **Encryption.** Matrix direct messages are end-to-end encrypted by default, and PHP has no maintained Matrix
+  encryption library, so the bot talks to the homeserver through [pantalaimon](https://github.com/matrix-org/pantalaimon),
+  which encrypts and decrypts for it. That is also why the bot logs in with a password: pantalaimon needs its own
+  device to hold the keys. The keys are in the `pantalaimon-data` volume; lose it and the bot comes back as a new
+  device that cannot read what was encrypted to the old one. Pantalaimon has had no release since 2022 (v0.10.5).
+- **Users.** Invite the bot to a direct message: it joins, answers with the help text, and that room is where your
+  notifications go. It leaves rooms with more members. When you leave the room, it leaves too and stops notifying
+  you. A Matrix user's `users` row holds the id of its `matrix_users` row in `platform_user_id`/`platform_channel_id`,
+  which are numbers, while Matrix ids are strings.
+- **Rendering.** Notifications are rendered from the Telegram variant of each template (its HTML is valid Matrix
+  HTML), link buttons become links under the text, and a preview image is uploaded and sent as an `m.image` with the
+  text as its caption.
+- **Rate limits.** Synapse allows a normal account a message every 5 seconds after a burst of 10. The bot waits out
+  `M_LIMIT_EXCEEDED`, but a busy bot should be exempted by the homeserver admin:
+  `POST /_synapse/admin/v1/users/<bot user id>/override_ratelimit` with `{"messages_per_second": 0, "burst_count": 0}`.
+
+Existing installs need:
+
+```sql
+-- cryptonoises: events_notifications_matrix, inform_notifications_matrix, matrix_users and
+-- template__events_notifications_matrix from sql/schema/main.sql, and
+ALTER TABLE users MODIFY `platform` enum('discord','telegram','matrix') DEFAULT NULL;
+ALTER TABLE log_events MODIFY `platform` enum('discord','telegram','matrix') DEFAULT NULL;
+```
+
 ## Workers instead of cron
 
 Every long-running command in this project is a **polling loop that ends by itself**: `/jobs/exec` runs

@@ -19,6 +19,7 @@ class Lifecycles extends AbstractCommand
 
         Models\Log\EventsNotificationsLog::model()->prepareTable(Config::kPLATFORM_Discord, $secondsAhead);
         Models\Log\EventsNotificationsLog::model()->prepareTable(Config::kPLATFORM_Telegram, $secondsAhead);
+        Models\Log\EventsNotificationsLog::model()->prepareTable(Config::kPLATFORM_Matrix, $secondsAhead);
 
         Models\Log\BotMessagesDiscord::model()->prepareTable($secondsAhead);
         Models\Log\BotMessagesTelegram::model()->prepareTable($secondsAhead);
@@ -37,10 +38,12 @@ class Lifecycles extends AbstractCommand
         Models\Temp_EventsFlowLockedIds::model()->begin();
         Models\Temp_EventsFlowLockedIds::model()->fixLockedIds(Config::kPLATFORM_Discord);
         Models\Temp_EventsFlowLockedIds::model()->fixLockedIds(Config::kPLATFORM_Telegram);
+        Models\Temp_EventsFlowLockedIds::model()->fixLockedIds(Config::kPLATFORM_Matrix);
 
         Models\Log\EventsFlowLog::model()->moveData($timePoint);
         Models\Log\EventsNotificationsLog::model()->moveData(Config::kPLATFORM_Discord, $timePoint);
         Models\Log\EventsNotificationsLog::model()->moveData(Config::kPLATFORM_Telegram, $timePoint);
+        Models\Log\EventsNotificationsLog::model()->moveData(Config::kPLATFORM_Matrix, $timePoint);
 
         Models\Temp_EventsFlowLockedIds::model()->close();
     }
@@ -60,6 +63,7 @@ class Lifecycles extends AbstractCommand
 
         Models\Log\EventsNotificationsLog::model()->dropTable(Config::kPLATFORM_Discord, $secondsBack);
         Models\Log\EventsNotificationsLog::model()->dropTable(Config::kPLATFORM_Telegram, $secondsBack);
+        Models\Log\EventsNotificationsLog::model()->dropTable(Config::kPLATFORM_Matrix, $secondsBack);
 
         Models\Log\BotMessagesDiscord::model()->dropTable($secondsBack);
         Models\Log\BotMessagesTelegram::model()->dropTable($secondsBack);

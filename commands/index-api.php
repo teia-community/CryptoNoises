@@ -58,6 +58,10 @@ $f3->route('GET /telegram/webhook/info',                       'CryptoNoises\Com
 
 $f3->route('GET /telegram/poll',                               'CryptoNoises\Commands\TelegramPoll->poll');
 
+$f3->route('GET /matrix/sync',                                  'CryptoNoises\Commands\MatrixBot->sync');
+$f3->route('GET /matrix/notifier/events-flow',                  'CryptoNoises\Commands\MatrixNotifier->notifyEventsFlow');
+$f3->route('GET /matrix/notifier/inform-flow',                  'CryptoNoises\Commands\MatrixNotifier->notifyInformsFlow');
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Discord
 

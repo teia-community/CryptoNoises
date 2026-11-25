@@ -18,6 +18,7 @@ class Config
 
     const kPLATFORM_Discord                             = 'discord';
     const kPLATFORM_Telegram                            = 'telegram';
+    const kPLATFORM_Matrix                              = 'matrix';
 
     const kNETWORK_Tezos                                = 'tezos';
 
@@ -76,6 +77,11 @@ class Config
     public string $publicDomain;                                            // public-app/ base URL
     public bool $notificationDebugFooter;                                   // debug ids appended to sent messages
     public string $publicApiUrl;                                            // public-api/ base URL (Telegram webhooks)
+
+    // Matrix bot (environment.php: api.matrix): the client-server API it talks to - pantalaimon, which encrypts and
+    // decrypts for it - and its user id. The password is kMATRIX_PASSWORD (consts-secrets.php). Empty = no Matrix bot.
+    public string $matrixProxyUrl = '';
+    public string $matrixUser = '';
 
     /** @var array<string, mixed> Public project links (environment.php: api.links) */
     private array $links = [];
@@ -137,6 +143,9 @@ class Config
         $this->publicApiUrl                         = (string) Environment::get('api.public_api_url');
         $this->links                                = (array) Environment::get('api.links', []);
 
+        $this->matrixProxyUrl                       = rtrim((string) Environment::get('api.matrix.proxy_url', ''), '/');
+        $this->matrixUser                           = (string) Environment::get('api.matrix.user', '');
+
         $this->limitWallets                         = (int) Environment::get('api.limits.wallets', 50);
         $this->limitFollowing                       = (int) Environment::get('api.limits.following', 1000);
         $this->limitOffersMaxHolders                = (int) Environment::get('api.limits.offers_max_holders', 250);
@@ -190,6 +199,7 @@ class Config
                 break;
 
             case self::kPLATFORM_Telegram:
+            case self::kPLATFORM_Matrix:
                 $this->uiNftDetailsButtonsPerRow            = 2;
 
                 $this->uiWalletIconsPerRow                  = 8;
@@ -225,5 +235,20 @@ class Config
     public function isTelegramPlatform(): bool
     {
         return $this->platform == self::kPLATFORM_Telegram;
+    }
+
+    public function isMatrixPlatform(): bool
+    {
+        return $this->platform == self::kPLATFORM_Matrix;
+    }
+
+    /**
+     * Messages laid out as for Telegram: HTML text, buttons in rows. Matrix takes the same HTML subset, so its
+     * notifications are rendered from the Telegram variant of every template (MatrixBotConnection then turns the
+     * link buttons into links).
+     */
+    public function usesTelegramLayout(): bool
+    {
+        return $this->isTelegramPlatform() || $this->isMatrixPlatform();
     }
 }

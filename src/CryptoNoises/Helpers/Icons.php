@@ -8,7 +8,7 @@ class Icons
 {
     public static function GetWalletIcons(): array
     {
-        if (Config::cfg()->isTelegramPlatform())
+        if (Config::cfg()->usesTelegramLayout())
         {
             return [
                 // Should be 8

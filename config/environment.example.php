@@ -49,6 +49,14 @@ return [
             'offers_max_holders'            => 250,                               // offers on tokens / collections with more holders are not sent
         ],
 
+        // Matrix bot (notifications, and a few text commands in a direct message). It talks to the homeserver
+        // through pantalaimon, which encrypts and decrypts for it, since Matrix DMs are end-to-end encrypted by default.
+        // The password is kMATRIX_PASSWORD in consts-secrets.php. '' user = no Matrix bot.
+        'matrix' => [
+            'user'                              => '',                          // @bot:example.org
+            'proxy_url'                         => 'http://127.0.0.1:8009',     // pantalaimon
+        ],
+
         'discord' => [
             // Onboarding channels on your server (null = disabled). The bot ignores normal messages in servers
             // (users talk to it via slash commands and DMs), except in these channels. On such a message it:

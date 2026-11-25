@@ -31,6 +31,7 @@ class EventsNotifications extends VssModel
         {
             case Config::kPLATFORM_Discord:     return 'events_notifications_discord';
             case Config::kPLATFORM_Telegram:    return 'events_notifications_telegram';
+            case Config::kPLATFORM_Matrix:      return 'events_notifications_matrix';
         }
 
         Log::Fatal(get_class($this), __FUNCTION__, "Unknown platform [$platform]");

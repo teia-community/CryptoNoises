@@ -181,6 +181,29 @@ CREATE TABLE IF NOT EXISTS `events_notifications_telegram` (
   CONSTRAINT `events_notifications_telegram_ibfk_2` FOREIGN KEY (`owner_adid`) REFERENCES `address` (`adid`) ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `events_notifications_matrix` (
+  `event_notification_id` int unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` int unsigned DEFAULT NULL,
+  `owner_adid` int unsigned DEFAULT NULL,
+  `owner_address` varchar(64) DEFAULT NULL,
+  `event_flow_id` int unsigned NOT NULL,
+  `notification_type` varchar(32) NOT NULL DEFAULT '',
+  `priority_index` tinyint NOT NULL DEFAULT 3,
+  `notify_status` enum('idle','active','done','skipped','error') NOT NULL DEFAULT 'idle',
+  `ts_created` timestamp NOT NULL DEFAULT current_timestamp(),
+  `ts_updated` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp(),
+  `exec_time` decimal(9,3) DEFAULT NULL,
+  `task_lifetime` int unsigned DEFAULT NULL,
+  `note` varchar(255) NOT NULL DEFAULT '',
+  PRIMARY KEY (`event_notification_id`),
+  KEY `owner_adid` (`owner_adid`),
+  KEY `event_flow_id` (`event_flow_id`),
+  KEY `user_id` (`user_id`),
+  KEY `notify_status` (`notify_status`),
+  CONSTRAINT `events_notifications_matrix_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON UPDATE CASCADE,
+  CONSTRAINT `events_notifications_matrix_ibfk_2` FOREIGN KEY (`owner_adid`) REFERENCES `address` (`adid`) ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `exceptions` (
   `exception_type` varchar(32) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
   `token_address` varchar(64) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL DEFAULT '',
@@ -267,6 +290,24 @@ CREATE TABLE IF NOT EXISTS `inform_notifications_telegram` (
   CONSTRAINT `inform_notifications_telegram_ibfk_2` FOREIGN KEY (`inform_flow_id`) REFERENCES `inform_flow` (`inform_flow_id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `inform_notifications_matrix` (
+  `inform_notification_id` int unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` int unsigned NOT NULL,
+  `inform_flow_id` int unsigned NOT NULL,
+  `priority_index` tinyint NOT NULL DEFAULT 3,
+  `notify_status` enum('idle','active','done','error') NOT NULL DEFAULT 'idle',
+  `ts_created` timestamp NOT NULL DEFAULT current_timestamp(),
+  `ts_updated` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp(),
+  `exec_time` decimal(9,3) DEFAULT NULL,
+  `note` varchar(255) NOT NULL DEFAULT '',
+  PRIMARY KEY (`inform_notification_id`),
+  UNIQUE KEY `unique_set` (`user_id`,`inform_flow_id`),
+  KEY `user_id` (`user_id`),
+  KEY `inform_flow_id` (`inform_flow_id`),
+  CONSTRAINT `inform_notifications_matrix_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON UPDATE CASCADE,
+  CONSTRAINT `inform_notifications_matrix_ibfk_2` FOREIGN KEY (`inform_flow_id`) REFERENCES `inform_flow` (`inform_flow_id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `log_discord_events` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `ts_event` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -296,7 +337,7 @@ CREATE TABLE IF NOT EXISTS `log_events` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `ts_event` timestamp NOT NULL DEFAULT current_timestamp(),
   `event_id` varchar(32) NOT NULL DEFAULT '',
-  `platform` enum('discord','telegram') DEFAULT NULL,
+  `platform` enum('discord','telegram','matrix') DEFAULT NULL,
   `user_id` int DEFAULT NULL,
   `message` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -455,7 +496,7 @@ CREATE TABLE IF NOT EXISTS `unstake_reminders_sent` (
 CREATE TABLE IF NOT EXISTS `users` (
   `user_id` int unsigned NOT NULL AUTO_INCREMENT,
   `type` enum('user') NOT NULL DEFAULT 'user',
-  `platform` enum('discord','telegram') DEFAULT NULL,
+  `platform` enum('discord','telegram','matrix') DEFAULT NULL,
   `platform_user_id` bigint NOT NULL,
   `platform_channel_id` bigint NOT NULL,
   `platform_guild_id` bigint DEFAULT NULL,
@@ -473,6 +514,18 @@ CREATE TABLE IF NOT EXISTS `users` (
   `last_notice` varchar(1024) DEFAULT NULL,
   PRIMARY KEY (`user_id`),
   UNIQUE KEY `platform` (`platform`,`platform_user_id`,`platform_channel_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Matrix users: their ids are strings (@user:server, !room:server), while users.platform_user_id and
+-- platform_channel_id are numbers, so a Matrix user's row there holds matrix_ref, the id of its row here
+CREATE TABLE IF NOT EXISTS `matrix_users` (
+  `matrix_ref` int unsigned NOT NULL AUTO_INCREMENT,
+  `matrix_user_id` varchar(255) NOT NULL,
+  `room_id` varchar(255) DEFAULT NULL,
+  `ts_created` timestamp NOT NULL DEFAULT current_timestamp(),
+  `ts_updated` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp(),
+  PRIMARY KEY (`matrix_ref`),
+  UNIQUE KEY `matrix_user_id` (`matrix_user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `users_action` (
@@ -613,6 +666,27 @@ CREATE TABLE IF NOT EXISTS `template__events_notifications_discord` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `template__events_notifications_telegram` (
+  `event_notification_id` int unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` int unsigned DEFAULT NULL,
+  `owner_adid` int unsigned DEFAULT NULL,
+  `owner_address` varchar(64) DEFAULT NULL,
+  `event_flow_id` int unsigned NOT NULL,
+  `notification_type` varchar(32) NOT NULL DEFAULT '',
+  `priority_index` tinyint NOT NULL DEFAULT 3,
+  `notify_status` enum('idle','active','done','skipped','error') NOT NULL DEFAULT 'idle',
+  `ts_created` timestamp NOT NULL DEFAULT current_timestamp(),
+  `ts_updated` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp(),
+  `exec_time` decimal(9,3) DEFAULT NULL,
+  `task_lifetime` int unsigned DEFAULT NULL,
+  `note` varchar(255) NOT NULL DEFAULT '',
+  PRIMARY KEY (`event_notification_id`),
+  KEY `owner_adid` (`owner_adid`),
+  KEY `event_flow_id` (`event_flow_id`),
+  KEY `user_id` (`user_id`),
+  KEY `notify_status` (`notify_status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `template__events_notifications_matrix` (
   `event_notification_id` int unsigned NOT NULL AUTO_INCREMENT,
   `user_id` int unsigned DEFAULT NULL,
   `owner_adid` int unsigned DEFAULT NULL,

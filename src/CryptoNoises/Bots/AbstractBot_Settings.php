@@ -81,7 +81,7 @@ trait AbstractBot_Settings
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-            if (Config::cfg()->isTelegramPlatform())
+            if (Config::cfg()->usesTelegramLayout())
             {
                 $notification->appendButtonsAsRows($buttons, 1);
             }

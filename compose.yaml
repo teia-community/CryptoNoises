@@ -276,6 +276,57 @@ services:
     restart: always
 
   #-------------------------------------------------------------------------------------------------------------------
+  # Matrix bot (profile "matrix"): notifications in a direct message, and a few text commands. Set MATRIX_USER and
+  # MATRIX_PASSWORD; see "Matrix bot" in the README.
+  #-------------------------------------------------------------------------------------------------------------------
+
+  # Encrypts and decrypts for the bot: Matrix DMs are end-to-end encrypted by default. Its keys live in the
+  # pantalaimon-data volume - losing it means a new device, and messages encrypted to the old one cannot be read.
+  pantalaimon:
+    image: docker.io/matrixdotorg/pantalaimon:v0.10.5
+    profiles: ["matrix"]
+    environment:
+      MATRIX_HOMESERVER_URL: ${MATRIX_HOMESERVER_URL:-}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        printf '[Default]\nLogLevel = Warning\nNotifications = Off\n\n[homeserver]\nHomeserver = %s\nListenAddress = 0.0.0.0\nListenPort = 8009\nSSL = False\nUseKeyring = False\nIgnoreVerification = True\n' "$$MATRIX_HOMESERVER_URL" > /data/pantalaimon.conf
+        exec pantalaimon -c /data/pantalaimon.conf --data-path /data
+    volumes:
+      - pantalaimon-data:/data
+    restart: always
+
+  bots-matrix-sync:
+    <<: *worker
+    depends_on:
+      db:
+        condition: service_healthy
+      pantalaimon:
+        condition: service_started
+    command: ["/opt/cryptonoises/commands/run", "/matrix/sync"]
+    profiles: ["matrix"]
+
+  bots-matrix-notifier-events:
+    <<: *worker
+    depends_on:
+      db:
+        condition: service_healthy
+      pantalaimon:
+        condition: service_started
+    command: ["/opt/cryptonoises/commands/run", "/matrix/notifier/events-flow"]
+    profiles: ["matrix"]
+
+  bots-matrix-notifier-informs:
+    <<: *worker
+    depends_on:
+      db:
+        condition: service_healthy
+      pantalaimon:
+        condition: service_started
+    command: ["/opt/cryptonoises/commands/run", "/matrix/notifier/inform-flow"]
+    profiles: ["matrix"]
+
+  #-------------------------------------------------------------------------------------------------------------------
   # Bots + API. Start these only after the indexer has caught up with the chain.
   #-------------------------------------------------------------------------------------------------------------------
 
@@ -375,6 +426,7 @@ services:
 
 volumes:
   db-data:
+  pantalaimon-data:
   ipfs-data:
   ipfs-previews:
   private-storage:

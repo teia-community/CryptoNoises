@@ -2,6 +2,7 @@
 
 namespace CryptoNoises\Localize\Notification\Wallets;
 
+use CryptoNoises\Config;
 use CryptoNoises\Entities\User;
 use CryptoNoises\Localize\Notification;
 
@@ -33,8 +34,9 @@ class Add_SuccessFirstOne extends Notification
             "and many other events...",
         ];
 
-        $this->footer = [
-            "Click on ⚙️ Settings to customize your wallet, set up notification filters, etc.",
-        ];
+        // Matrix has no Settings menu: its commands are all there is
+        $this->footer = Config::cfg()->isMatrixPlatform()
+            ? ["Send <code>!help</code> for what else I can do."]
+            : ["Click on ⚙️ Settings to customize your wallet, set up notification filters, etc."];
     }
 }

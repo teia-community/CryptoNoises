@@ -38,7 +38,7 @@ trait AbstractBot_OptionsNotifier
 
             $isFilterActive = $options->isNotify($filterParams['cfg_key']);
 
-            if (Config::cfg()->isTelegramPlatform())
+            if (Config::cfg()->usesTelegramLayout())
             {
                 $stateTitle = $isFilterActive ? Phrase::I()->stateReceive : Phrase::I()->stateIgnore;
 
