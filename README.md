@@ -475,6 +475,22 @@ setting. The first run only records the existing events. Existing installs need:
 ALTER TABLE options_notifier ADD COLUMN notify_teia_events enum('yes','no') DEFAULT NULL AFTER notify_domains;
 ```
 
+### Teia multisig, DAO and polls
+
+The same job watches the core team multisig (`KT1J9FYz…dHuvb`), the DAO governance contract (`KT1GHX73…YF66`) and the
+community polls:
+
+- **Multisig:** new proposals, and a reminder a day before one expires when a signer has not voted. These go to users
+  watching a signer's wallet.
+- **DAO:** new proposals, to everyone.
+- **Community polls** (`KT1SUExZ…WoU`): new polls, to everyone.
+
+Users can turn these off with "🏛 Teia multisig, DAO & polls". Existing installs need:
+
+```sql
+ALTER TABLE options_notifier ADD COLUMN notify_teia_governance enum('yes','no') DEFAULT NULL AFTER notify_teia_events;
+```
+
 ## Matrix bot
 
 A third messenger, notifications first: the same event and info notifications as on Telegram, in a direct message,

@@ -42,6 +42,7 @@ class OptionsNotifier
 
     const kNotify_Domains                       = 'notify_domains';
     const kNotify_TeiaEvents                    = 'notify_teia_events';     // user-level: not about a wallet
+    const kNotify_TeiaGovernance                = 'notify_teia_governance'; // multisig (signers) and DAO proposals
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // These values match the column suffixes (threshold_<value>)
@@ -135,6 +136,7 @@ class OptionsNotifier
         $this->addType(OptionsNotifier::kNotify_BakerAlerts,            true);
         $this->addType(OptionsNotifier::kNotify_Domains,                true);
         $this->addType(OptionsNotifier::kNotify_TeiaEvents,             true);
+        $this->addType(OptionsNotifier::kNotify_TeiaGovernance,         true);
     }
 
     private function activatePresetForUserWallet(): void
@@ -190,6 +192,7 @@ class OptionsNotifier
 
             case OptionsNotifier::kNotify_Domains:              $title = Phrase::I()->filterTypeDomainsEvents; break;
             case OptionsNotifier::kNotify_TeiaEvents:           $title = Phrase::I()->filterTypeTeiaEvents; break;
+            case OptionsNotifier::kNotify_TeiaGovernance:       $title = Phrase::I()->filterTypeTeiaGovernance; break;
 
             default:                                            $title = "[$cfgKey]"; break;
         }

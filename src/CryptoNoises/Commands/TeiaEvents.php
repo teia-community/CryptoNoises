@@ -40,6 +40,7 @@ class TeiaEvents extends AbstractCommand
             try
             {
                 $this->logMsg(gmdate('H:i:s').' teia events: '.$this->passOnce().' announced', "\n", true);
+                $this->logMsg(gmdate('H:i:s').' teia governance: '.(new TeiaGovernance())->passOnce().' sent', "\n", true);
             }
             catch (Exception $e)
             {
@@ -54,6 +55,7 @@ class TeiaEvents extends AbstractCommand
     public function runOnce(): void
     {
         $this->logMsg('Teia events announced: '.$this->passOnce(), "\n", true);
+        $this->logMsg('Teia governance sent: '.(new TeiaGovernance())->passOnce(), "\n", true);
     }
 
     /** @return int events announced */

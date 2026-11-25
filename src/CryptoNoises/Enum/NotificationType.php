@@ -57,6 +57,10 @@ abstract class NotificationType
 
     const DomainExpires                     = 'domain-expires';
     const TeiaEvent                         = 'teia-event';
+    const TeiaMultisigProposal              = 'teia-multisig-proposal';
+    const TeiaMultisigReminder              = 'teia-multisig-reminder';
+    const TeiaDaoProposal                   = 'teia-dao-proposal';
+    const TeiaPoll                          = 'teia-poll';
     const DomainExpired                     = 'domain-expired';
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

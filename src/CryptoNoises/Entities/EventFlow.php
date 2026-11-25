@@ -755,6 +755,22 @@ class EventFlow
                 Models\EventsNotifications::model()->insertNotifyTask($userItem['platform'], (int) $userItem['user_id'],
                     null, null, $eventFlowId, Models\EventsNotifications::kPRIORITY_INDEX_Low, NotificationType::TeiaEvent);
         }
+        else if ($this->event_type == Enum\EventFlowType::TeiaGovernance)
+        {
+            if ($this->event_details == 'dao-proposal' || $this->event_details == 'poll')
+            {
+                $type = $this->event_details == 'poll' ? NotificationType::TeiaPoll : NotificationType::TeiaDaoProposal;
+
+                foreach (Models\Users::model()->getActiveUsers() as $userItem)
+                    Models\EventsNotifications::model()->insertNotifyTask($userItem['platform'], (int) $userItem['user_id'],
+                        null, null, $eventFlowId, Models\EventsNotifications::kPRIORITY_INDEX_Normal, $type);
+            }
+            else
+            {
+                $type = $this->event_details == 'multisig-reminder' ? NotificationType::TeiaMultisigReminder : NotificationType::TeiaMultisigProposal;
+                $this->pushEventNotificationForUserIdsAsOwner($this->userIds, $targetAdid, $targetAddress, $eventFlowId, $type);
+            }
+        }
         else if ($this->event_type == Enum\EventFlowType::Governance)
         {
             $notificationType = match ($this->event_details) {

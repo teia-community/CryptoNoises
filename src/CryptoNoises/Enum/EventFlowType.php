@@ -52,7 +52,8 @@ abstract class EventFlowType
     const BakerDal                          = 'baker-dal';                      // insufficient | recovered | denounced
     const Governance                        = 'governance';                     // period | proposal | vote-reminder
 
-    const TeiaEvent                         = 'teia-event';                     // a new event on teia.art/events, for everyone
+    const TeiaEvent                         = 'teia-event';
+    const TeiaGovernance                    = 'teia-governance';                // multisig-proposal | multisig-reminder | dao-proposal | poll                     // a new event on teia.art/events, for everyone
 
     const CollectionOffer                   = 'collection-offer';
 

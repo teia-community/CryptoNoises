@@ -312,6 +312,15 @@ class Tzkt extends AbstractVendor
         return array_column($result->data, 'value', 'key');
     }
 
+    /** Active key/value rows of a contract's bigmap, filtered by e.g. ['key.nat' => 66]. Null when TzKT did not answer. */
+    public static function GetContractBigmapRows(string $contract, string $path, array $filters = []): ?array
+    {
+        $query = http_build_query($filters + ['active' => 'true', 'select' => 'key,value', 'limit' => self::kMAX_ITEMS_PER_REQUEST]);
+        $result = self::GetDataJson(self::api()."/contracts/$contract/bigmaps/$path/keys?$query");
+
+        return $result->isSuccess() && is_array($result->data) ? $result->data : null;
+    }
+
     public static function GetBigmapKeyValue(int $bigmap, string $key): ?array
     {
         $result = self::GetDataJson(self::api()."/bigmaps/$bigmap/keys?key=".rawurlencode($key)."&select=value&limit=1");
