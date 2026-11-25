@@ -19,6 +19,8 @@ use CryptoNoises\Localize\NotificationMatrix;
  */
 class MatrixBotGate extends AbstractBot implements AbstractBotGate
 {
+    use MatrixBotGate_Settings;
+
     private MatrixBotConnection $connection;
 
     public function __construct(MatrixBotConnection $connection)
@@ -134,6 +136,12 @@ class MatrixBotGate extends AbstractBot implements AbstractBotGate
                 $user->cancelNextAction();
                 $this->sendNotifications(Notification\Custom::I('OK, cancelled.'));
                 return true;
+        }
+
+        if ($isCommand && ($settings = $this->settingsCommand($user, strtolower((string) $word), $query)) !== null)
+        {
+            $this->sendNotifications($settings);
+            return true;
         }
 
         // The answer to "!add" / "!remove" asked without an address

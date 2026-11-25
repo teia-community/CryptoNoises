@@ -28,10 +28,9 @@ class Help extends Notification
             '<code>!wallets</code> - the wallets you watch',
             '<code>!summary</code> - their balances',
             '<code>!remove</code> - stop watching a wallet',
+            '<code>!settings</code> - notification types, digest, minimum amounts, reminders',
             '<code>!stop</code> - pause all notifications (send anything to resume)',
             '<code>!help</code> - this list',
-            ' ',
-            'Settings such as thresholds and notification types can be changed in the Telegram or Discord bot for now.',
         ];
     }
 }
