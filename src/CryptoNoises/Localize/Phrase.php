@@ -67,6 +67,8 @@ class Phrase
     public string $filterTypeStaking                   = '🥩 Staking & delegation';
     public string $filterTypeOrigination               = '📜 Contracts you originate';
     public string $filterTypeMessages                  = '💬 Messages to you';
+    public string $filterTypeBakerDelegators           = '🧑‍🍳 Your delegators & stakers (bakers)';
+    public string $filterTypeBakerAlerts               = '🚨 Missed rights, DAL & governance (bakers)';
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -79,6 +81,9 @@ class Phrase
 
     public string $finalizeReminder                     = '⏰ Finalize reminder';
     public string $finalizeReminderInfo                 = 'When unstaked tez can be finalized but still are not, remind me:';
+
+    public string $missedAttestations                   = '🚨 Missed attestations';
+    public string $missedAttestationsInfo               = 'For bakers: alert me when my baker misses at least this many attestations within an hour (missed blocks always alert):';
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -173,6 +178,15 @@ class Phrase
     }
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    /** Label of a missed-attestations choice (OptionsNotifier::kMissedAttestationsOff = off) */
+    public static function MissedAttestations(int $count): string
+    {
+        if ($count <= 0)
+            return 'Off';
+
+        return $count == 1 ? 'Every miss' : "$count in an hour";
+    }
 
     /** Label of a finalize-reminder choice (seconds after unlock; OptionsNotifier::kFinalizeReminderOff = off) */
     public static function FinalizeReminder(int $seconds): string

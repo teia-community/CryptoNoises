@@ -345,11 +345,14 @@ CREATE TABLE IF NOT EXISTS `options_notifier` (
   `notify_staking` enum('yes','no') DEFAULT NULL,
   `notify_origination` enum('yes','no') DEFAULT NULL,
   `notify_messages` enum('yes','no') DEFAULT NULL,
+  `notify_baker_delegators` enum('yes','no') DEFAULT NULL,
+  `notify_baker_alerts` enum('yes','no') DEFAULT NULL,
   `notify_auction` enum('yes','no') DEFAULT NULL,
   `notify_domains` enum('yes','no') DEFAULT NULL,
   `threshold_transaction` bigint unsigned DEFAULT NULL,
   `threshold_offer` bigint unsigned DEFAULT NULL,
   `finalize_reminder_sec` int DEFAULT NULL,
+  `missed_attestations_alert` smallint unsigned DEFAULT NULL,
   `ts_created` timestamp NOT NULL DEFAULT current_timestamp(),
   `ts_updated` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp(),
   PRIMARY KEY (`user_id`,`wallet_adid`),
@@ -429,6 +432,15 @@ CREATE TABLE IF NOT EXISTS `queue_wallets_sync` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `wallet_adid` (`wallet_adid`),
   KEY `wallet_address` (`wallet_address`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Baker alerts already sent (governance periods, proposals, vote reminders), once per (alert, user): like the
+-- finalize reminders, an event only stays in events_flow for about ten minutes (see BakerAlertsSent)
+CREATE TABLE IF NOT EXISTS `baker_alerts_sent` (
+  `alert_key` varchar(128) NOT NULL,
+  `user_id` int unsigned NOT NULL,
+  `ts_sent` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`alert_key`,`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Finalize reminders already sent, so each goes out once per (unstake request, user): the reminder event itself only

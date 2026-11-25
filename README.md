@@ -817,6 +817,53 @@ ALTER TABLE options_notifier
 `notify_token_comment` must exist first; it came with the comment notifications, and an install that never added
 it fails only when someone toggles that switch.
 
+### 5. Baker alerts
+
+For a watched wallet that is a baker, under two settings switches ("🧑‍🍳 Your delegators & stakers" and "🚨 Missed
+rights, DAL & governance"):
+
+- **Delegators and stakers.** A wallet started or stopped delegating to it (with the baker it came from or went to),
+  or staked / unstaked with it. These come from the account-operation analyzer, as the baker's side of the same
+  operations, and respect the transaction threshold, so a busy baker can leave out dust delegations.
+- **Missed rights.** When the baker misses at least N attestations within an hour - N set per user under Settings ->
+  "🚨 Missed attestations" (every miss, 3, 10, 25, 50 or off; 10 by default) - or any block. Missing one now and then
+  is normal, but a minute of downtime already misses about ten (a block every 6 seconds, about 600 an hour); an
+  offline baker misses one every block. Only
+  misses after the last one reported to that user count, so a baker that stays down is reported again each time it
+  has missed N more, and a slow trickle never alerts. Missed blocks always alert: they are rare and cost rewards.
+- **DAL participation.** A baker that attests less than the protocol's minimal share (2/3) of the DAL slots it could
+  attest in a cycle loses that cycle's DAL rewards. The alert goes out once per cycle while the cycle can still be
+  saved, from the node's verdict (`dal_participation`: attested / attestable slots, expected rewards), and waits for
+  30 attestable slots - early in a cycle one miss reads as insufficient. If it recovers within the cycle, one more
+  message says so; a denunciation for a DAL attestation is reported once per cycle too.
+- **Governance.** A new voting period, a new protocol proposal, and a reminder when a vote closes within a day and
+  the baker has not voted (TzKT's voter status `none`; there is something to vote on: an exploration or promotion
+  ballot, or a proposal period that has proposals).
+
+The last three come from `bots-baker-alerts` (profile `bots`, `run /tezos-network/baker-alerts`), which polls TzKT
+every ten minutes: they are about now, and the indexer may be days behind the head. DAL participation and the
+protocol constants (DAL ratio, cycle length; re-read every ten minutes) come from a node's RPC, `TEZOS_RPC_URL` (a
+public one by default; a self-hosted TzKT has no such endpoint). Voting period ends are given as a time and as the
+cycle and level they fall on. Missed rights are counted a few levels short of the head, where a right's outcome is
+final, over the hour by the clock (the level an hour ago comes from TzKT: block times change with protocol upgrades,
+60 s at launch and 6 s now); the highest level reported to each user is kept in `config`
+(`BakerAlerts.Missed.<user>.<baker>`). DAL and governance alerts go out once per (alert, user), recorded in
+`baker_alerts_sent`, and the first run announces nothing that already happened.
+
+Several TzKT filters these would naturally use are silently ignored - `address.in` on `/delegates`, `firstPeriod`
+on `/voting/proposals`, `delegate` on a period's voters - so the job filters those itself; each filter it does rely
+on was checked against an impossible value.
+
+Existing installs need:
+
+```sql
+-- cryptonoises: baker_alerts_sent, from sql/schema/main.sql, and
+ALTER TABLE options_notifier
+    ADD COLUMN notify_baker_delegators enum('yes','no') DEFAULT NULL AFTER notify_messages,
+    ADD COLUMN notify_baker_alerts enum('yes','no') DEFAULT NULL AFTER notify_baker_delegators,
+    ADD COLUMN missed_attestations_alert smallint unsigned DEFAULT NULL AFTER finalize_reminder_sec;
+```
+
 ### Where the progress is stored
 
 In table and method names "fix" means "record": `fixer_*` tables and `fix*()` methods record progress, they do not

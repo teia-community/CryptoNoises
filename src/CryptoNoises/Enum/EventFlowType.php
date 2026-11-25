@@ -45,6 +45,13 @@ abstract class EventFlowType
     const Origination                       = 'origination';
     const UnstakeFinalizable                = 'unstake-finalizable';          // reminder: one per unstake request and user
 
+    // For bakers. target_address is the baker.
+    const BakerDelegator                    = 'baker-delegator';                // joined | left
+    const BakerStaker                       = 'baker-staker';                   // stake | unstake
+    const BakerMissedRights                 = 'baker-missed-rights';            // missed attestations and blocks
+    const BakerDal                          = 'baker-dal';                      // insufficient | recovered | denounced
+    const Governance                        = 'governance';                     // period | proposal | vote-reminder
+
     const CollectionOffer                   = 'collection-offer';
 
     const ExchangeCoinsToToken              = 'exchange-coins-to-token';

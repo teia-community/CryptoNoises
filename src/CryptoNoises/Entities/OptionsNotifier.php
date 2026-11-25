@@ -36,6 +36,10 @@ class OptionsNotifier
     // Messages addressed to the wallet in on-chain chats (Chad Chat, Trollbox replies)
     const kNotify_Messages                      = 'notify_messages';
 
+    // Only ever fire for a wallet that is a baker
+    const kNotify_BakerDelegators               = 'notify_baker_delegators';    // delegators and stakers joining / leaving
+    const kNotify_BakerAlerts                   = 'notify_baker_alerts';        // missed rights, governance
+
     const kNotify_Domains                       = 'notify_domains';
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -126,6 +130,8 @@ class OptionsNotifier
         $this->addType(OptionsNotifier::kNotify_Staking,                true);
         $this->addType(OptionsNotifier::kNotify_Origination,            true);
         $this->addType(OptionsNotifier::kNotify_Messages,               true);
+        $this->addType(OptionsNotifier::kNotify_BakerDelegators,        true);
+        $this->addType(OptionsNotifier::kNotify_BakerAlerts,            true);
         $this->addType(OptionsNotifier::kNotify_Domains,                true);
     }
 
@@ -148,6 +154,8 @@ class OptionsNotifier
         $this->addType(OptionsNotifier::kNotify_Staking,                true);
         $this->addType(OptionsNotifier::kNotify_Origination,            true);
         $this->addType(OptionsNotifier::kNotify_Messages,               true);
+        $this->addType(OptionsNotifier::kNotify_BakerDelegators,        true);
+        $this->addType(OptionsNotifier::kNotify_BakerAlerts,            true);
     }
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -175,6 +183,8 @@ class OptionsNotifier
             case OptionsNotifier::kNotify_Staking:              $title = Phrase::I()->filterTypeStaking; break;
             case OptionsNotifier::kNotify_Origination:          $title = Phrase::I()->filterTypeOrigination; break;
             case OptionsNotifier::kNotify_Messages:             $title = Phrase::I()->filterTypeMessages; break;
+            case OptionsNotifier::kNotify_BakerDelegators:      $title = Phrase::I()->filterTypeBakerDelegators; break;
+            case OptionsNotifier::kNotify_BakerAlerts:          $title = Phrase::I()->filterTypeBakerAlerts; break;
 
             case OptionsNotifier::kNotify_Domains:              $title = Phrase::I()->filterTypeDomainsEvents; break;
 
@@ -279,6 +289,49 @@ class OptionsNotifier
 
         Models\OptionsNotifier::model()->save($this->userId, $this->walletAdid, [
             self::kFinalizeReminderColumn => $seconds,
+        ]);
+    }
+
+    //------------------------------------------------------------------------------------------------------------------
+    // Bakers: how many missed attestations within an hour make an alert. Missing one now and then is normal; a node
+    // restart of a minute already misses several, and an offline baker misses one every block.
+
+    const kMissedAttestationsColumn             = 'missed_attestations_alert';
+    const kMissedAttestationsOff                = 0;
+    const kMissedAttestationsDefault            = 10;
+
+    /** key => attestations missed within an hour; kMissedAttestationsOff = no alerts for attestations */
+    public static function GetMissedAttestationsValues(): array
+    {
+        return [
+            'a1'  => 1,
+            'a3'  => 3,
+            'a10' => 10,
+            'a25' => 25,
+            'a50' => 50,
+            'off' => self::kMissedAttestationsOff,
+        ];
+    }
+
+    public function getMissedAttestationsAlert(): int
+    {
+        $value = $this->data[self::kMissedAttestationsColumn] ?? null;
+
+        if ($value === null || !in_array((int) $value, self::GetMissedAttestationsValues(), true))
+            return self::kMissedAttestationsDefault;
+
+        return (int) $value;
+    }
+
+    public function setMissedAttestationsAlert(int $count): void
+    {
+        if (!in_array($count, self::GetMissedAttestationsValues(), true))
+            return;
+
+        $this->data[self::kMissedAttestationsColumn] = $count;
+
+        Models\OptionsNotifier::model()->save($this->userId, $this->walletAdid, [
+            self::kMissedAttestationsColumn => $count,
         ]);
     }
 

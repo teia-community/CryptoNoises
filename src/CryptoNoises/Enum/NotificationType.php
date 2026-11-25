@@ -74,6 +74,21 @@ abstract class NotificationType
     const Origination                       = 'origination';
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // For bakers
+
+    const BakerDelegatorJoined              = 'baker-delegator-joined';
+    const BakerDelegatorLeft                = 'baker-delegator-left';
+    const BakerStakerStake                  = 'baker-staker-stake';
+    const BakerStakerUnstake                = 'baker-staker-unstake';
+    const BakerMissedRights                 = 'baker-missed-rights';
+    const BakerDalInsufficient              = 'baker-dal-insufficient';
+    const BakerDalRecovered                 = 'baker-dal-recovered';
+    const BakerDalDenounced                 = 'baker-dal-denounced';
+    const GovernancePeriod                  = 'governance-period';
+    const GovernanceProposal                = 'governance-proposal';
+    const GovernanceVoteReminder            = 'governance-vote-reminder';
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     const Exchange_CoinsToToken             = 'exchange-coins-to-token';
     const Exchange_TokenToCoins             = 'exchange-token-to-coins';

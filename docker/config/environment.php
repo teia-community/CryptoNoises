@@ -91,6 +91,9 @@ return [
         // TzKT that account aliases are read from when tzkt_api_url has none (a self-hosted TzKT has none)
         'tzkt_aliases_url'          => $env('TEZOS_TZKT_ALIASES_URL', 'https://api.tzkt.io/v1'),
 
+        // A Tezos node's RPC, for bakers' DAL participation. A few requests per baker alert pass.
+        'rpc_url'                   => $env('TEZOS_RPC_URL', 'https://rpc.tzkt.io/mainnet'),
+
         // Gateway used to read token metadata and media
         'ipfs_gateway_url'          => $env('TEZOS_IPFS_GATEWAY_URL', 'https://ipfs.io/ipfs/'),
 

@@ -256,6 +256,75 @@ trait AbstractBot_Notification_Events
             $notification   = Notification\Transaction\BakerParameters::I($user);
             $thresholdScope = null;
         }
+        #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        # For bakers. Delegators and stakers carry an amount, so a busy baker can use the transaction threshold
+        # to leave out dust delegations; the alerts have no amount.
+        else if ($notificationType == Enum\NotificationType::BakerDelegatorJoined)
+        {
+            $notifyFilter   = OptionsNotifier::kNotify_BakerDelegators;
+            $notification   = Notification\Transaction\BakerDelegatorJoined::I($user);
+            $thresholdScope = OptionsNotifier::kThresholdTransaction;
+        }
+        else if ($notificationType == Enum\NotificationType::BakerDelegatorLeft)
+        {
+            $notifyFilter   = OptionsNotifier::kNotify_BakerDelegators;
+            $notification   = Notification\Transaction\BakerDelegatorLeft::I($user);
+            $thresholdScope = OptionsNotifier::kThresholdTransaction;
+        }
+        else if ($notificationType == Enum\NotificationType::BakerStakerStake)
+        {
+            $notifyFilter   = OptionsNotifier::kNotify_BakerDelegators;
+            $notification   = Notification\Transaction\BakerStakerStake::I($user);
+            $thresholdScope = OptionsNotifier::kThresholdTransaction;
+        }
+        else if ($notificationType == Enum\NotificationType::BakerStakerUnstake)
+        {
+            $notifyFilter   = OptionsNotifier::kNotify_BakerDelegators;
+            $notification   = Notification\Transaction\BakerStakerUnstake::I($user);
+            $thresholdScope = OptionsNotifier::kThresholdTransaction;
+        }
+        else if ($notificationType == Enum\NotificationType::BakerMissedRights)
+        {
+            $notifyFilter   = OptionsNotifier::kNotify_BakerAlerts;
+            $notification   = Notification\Transaction\BakerMissedRights::I($user);
+            $thresholdScope = null;
+        }
+        else if ($notificationType == Enum\NotificationType::BakerDalInsufficient)
+        {
+            $notifyFilter   = OptionsNotifier::kNotify_BakerAlerts;
+            $notification   = Notification\Transaction\BakerDalInsufficient::I($user);
+            $thresholdScope = null;
+        }
+        else if ($notificationType == Enum\NotificationType::BakerDalRecovered)
+        {
+            $notifyFilter   = OptionsNotifier::kNotify_BakerAlerts;
+            $notification   = Notification\Transaction\BakerDalRecovered::I($user);
+            $thresholdScope = null;
+        }
+        else if ($notificationType == Enum\NotificationType::BakerDalDenounced)
+        {
+            $notifyFilter   = OptionsNotifier::kNotify_BakerAlerts;
+            $notification   = Notification\Transaction\BakerDalDenounced::I($user);
+            $thresholdScope = null;
+        }
+        else if ($notificationType == Enum\NotificationType::GovernancePeriod)
+        {
+            $notifyFilter   = OptionsNotifier::kNotify_BakerAlerts;
+            $notification   = Notification\Transaction\GovernancePeriod::I($user);
+            $thresholdScope = null;
+        }
+        else if ($notificationType == Enum\NotificationType::GovernanceProposal)
+        {
+            $notifyFilter   = OptionsNotifier::kNotify_BakerAlerts;
+            $notification   = Notification\Transaction\GovernanceProposal::I($user);
+            $thresholdScope = null;
+        }
+        else if ($notificationType == Enum\NotificationType::GovernanceVoteReminder)
+        {
+            $notifyFilter   = OptionsNotifier::kNotify_BakerAlerts;
+            $notification   = Notification\Transaction\GovernanceVoteReminder::I($user);
+            $thresholdScope = null;
+        }
         else if ($notificationType == Enum\NotificationType::ChatMessage)
         {
             $notifyFilter   = OptionsNotifier::kNotify_Messages;
@@ -581,6 +650,21 @@ trait AbstractBot_Notification_Events
             case Enum\NotificationType::Origination:
             case Enum\NotificationType::ChatMessage:
             case Enum\NotificationType::ChatReply:
+            case Enum\NotificationType::BakerMissedRights:
+            case Enum\NotificationType::BakerDalInsufficient:
+            case Enum\NotificationType::BakerDalRecovered:
+            case Enum\NotificationType::BakerDalDenounced:
+            case Enum\NotificationType::GovernancePeriod:
+            case Enum\NotificationType::GovernanceProposal:
+            case Enum\NotificationType::GovernanceVoteReminder:
+                break;
+
+            // The delegated balance, or the tez staked / unstaked
+            case Enum\NotificationType::BakerDelegatorJoined:
+            case Enum\NotificationType::BakerDelegatorLeft:
+            case Enum\NotificationType::BakerStakerStake:
+            case Enum\NotificationType::BakerStakerUnstake:
+                list ($amountInCoins, $amountInTokenEntity) = $this->initializeAmounts($eventItem, $eventItem['price']);
                 break;
 
             // The delegated balance, or the tez moved in or out of a stake
@@ -895,6 +979,16 @@ trait AbstractBot_Notification_Events
             $notification->bind('{###EXPIRE_DURATION###}',  Phrase::FriendlyDuration($expireDuration));
         }
 
+        if (in_array($notificationType, [
+            Enum\NotificationType::BakerDelegatorJoined, Enum\NotificationType::BakerDelegatorLeft,
+            Enum\NotificationType::BakerStakerStake, Enum\NotificationType::BakerStakerUnstake,
+            Enum\NotificationType::BakerMissedRights, Enum\NotificationType::GovernancePeriod,
+            Enum\NotificationType::BakerDalInsufficient, Enum\NotificationType::BakerDalRecovered, Enum\NotificationType::BakerDalDenounced,
+            Enum\NotificationType::GovernanceProposal, Enum\NotificationType::GovernanceVoteReminder]))
+        {
+            $this->bindBakerEvent($notification, $network, $eventItem, $customData ?? []);
+        }
+
         if ($notificationType == Enum\NotificationType::ChatMessage)
         {
             $notification->bind('{###ENCRYPTED###}', !empty($customData['encrypted']) ? '🔒 End-to-end encrypted' : Notification::HIDE_ME);
@@ -1189,8 +1283,89 @@ trait AbstractBot_Notification_Events
         $bindOrHide('{###CONTRACT_URL###}', $contract ? $network->getContractPublicUrl($contract) : null);
     }
 
+    /**
+     * Placeholders of the bakers' templates. The baker is target_address; a delegator or staker is the sender, bound
+     * by the common code ({###SENDER_ADDRESS###}).
+     */
+    private function bindBakerEvent(Notification $notification, AbstractNetwork $network, array $eventItem, array $customData): void
+    {
+        $bindOrHide = function (string $placeholder, $value) use ($notification): void
+        {
+            $notification->bind($placeholder, ($value === null || $value === '') ? Notification::HIDE_ME : (string) $value);
+        };
+
+        $baker = $eventItem['target_address'];
+        $name  = $network->getWalletPublicName($baker);
+
+        // A baker rarely has a profile here, but always has a TzKT alias when it has a name at all
+        if ($name === $network->getWalletShortName($baker))
+            $name = \CryptoNoisesTezos\Vendors\Tzkt::GetAlias($baker) ?? $name;
+
+        $bindOrHide('{###BAKER_NAME###}', Notification::SafeText($name));
+        $bindOrHide('{###BAKER_URL###}',  $network->getContractPublicUrl($baker));
+
+        // Where a delegator came from, or went to
+        $other = $customData[CustomData::kPREV_BAKER] ?? null;
+        $bindOrHide('{###OTHER_BAKER###}', $other ? Notification::SafeText($customData[CustomData::kPREV_BAKER_NAME] ?? $network->getWalletShortName($other)) : null);
+
+        // Missed rights
+        $attestations = (int) ($customData['missed_attestations'] ?? 0);
+        $slots        = (int) ($customData['missed_slots'] ?? 0);
+        $blocks       = (int) ($customData['missed_blocks'] ?? 0);
+
+        $bindOrHide('{###MISSED_ATTESTATIONS###}', $attestations ? $attestations.' ('.$slots.' slot'.($slots == 1 ? '' : 's').')' : null);
+        $bindOrHide('{###MISSED_BLOCKS###}',       $blocks ?: null);
+
+        $first = $customData['level_first'] ?? null;
+        $last  = $customData['level_last'] ?? null;
+        $bindOrHide('{###LEVELS###}', $first === null ? null : ($first == $last ? "$first" : "$first – $last"));
+
+        // DAL participation in the cycle
+        if (isset($customData['dal_attestable']))
+        {
+            $attested   = (int) $customData['dal_attested'];
+            $attestable = (int) $customData['dal_attestable'];
+            $pct        = $attestable > 0 ? round(100 * $attested / $attestable) : 0;
+
+            $bindOrHide('{###DAL_PARTICIPATION###}', "$attested of $attestable attestable slots ($pct%)");
+            $bindOrHide('{###DAL_REQUIRED###}',      isset($customData['dal_required']) ? $customData['dal_required'].'%' : null);
+            $bindOrHide('{###DAL_REWARDS###}',       !empty($customData['dal_rewards']) ? $network->getCoinsFriendlyFullValue($customData['dal_rewards']) : null);
+        }
+
+        $bindOrHide('{###CYCLE###}', $customData['cycle'] ?? null);
+
+        // Governance
+        $kinds = ['proposal' => 'Proposal', 'exploration' => 'Exploration vote', 'cooldown' => 'Cooldown',
+                  'promotion' => 'Promotion vote', 'adoption' => 'Adoption', 'testing' => 'Testing'];
+
+        $kind = $customData['period_kind'] ?? null;
+        $bindOrHide('{###PERIOD_KIND###}', $kind ? ($kinds[$kind] ?? ucfirst($kind)) : null);
+        // "Dec 2, 23:54 (in 7 days, end of cycle 1431, level 16,075,488)": bakers plan by cycle and level, not clock
+        $endAt = [];
+
+        if (isset($customData['period_end_cycle']))
+            $endAt[] = 'end of cycle '.$customData['period_end_cycle'];
+
+        if (isset($customData['period_end_level']))
+            $endAt[] = 'level '.number_format($customData['period_end_level']);
+
+        $bindOrHide('{###PERIOD_END###}', !empty($customData['period_end']) ? self::FriendlyFutureTime($customData['period_end'], null, '', $endAt) : null);
+
+        $hash = $customData['proposal'] ?? null;
+        $bindOrHide('{###PROPOSAL###}', $hash === null ? null
+            : Notification::SafeText(($customData['proposal_name'] ?? 'Unnamed proposal').' ('.substr($hash, 0, 10).'…)'));
+
+        $initiator = $customData['initiator'] ?? null;
+        $bindOrHide('{###INITIATOR###}', $initiator ? Notification::SafeText($customData['initiator_name'] ?? $network->getWalletShortName($initiator)) : null);
+
+        $count = $customData['proposals_count'] ?? null;
+        $bindOrHide('{###PROPOSALS_COUNT###}', $count ? $count.' proposal'.($count == 1 ? '' : 's').' to upvote' : null);
+
+        $bindOrHide('{###GOVERNANCE_URL###}', $customData['proposal_url'] ?? \CryptoNoises\Commands\BakerAlerts::kGOVERNANCE_URL);
+    }
+
     /** "Nov 27, 2026, 23:46 UTC (in 2 days, cycle 1427)" */
-    private static function FriendlyFutureTime(string $isoTime, $cycle, string $prefix = ''): string
+    private static function FriendlyFutureTime(string $isoTime, $cycle, string $prefix = '', array $more = []): string
     {
         $seconds = strtotime($isoTime) - Time::Time();
         $details = [];
@@ -1202,6 +1377,8 @@ trait AbstractBot_Notification_Events
 
         if ($cycle !== null)
             $details[] = "cycle $cycle";
+
+        $details = array_merge($details, $more);
 
         return $prefix.Phrase::FriendlyDateTime($isoTime).($details ? ' ('.join(', ', $details).')' : '');
     }
