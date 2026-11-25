@@ -94,6 +94,9 @@ return [
         // TzKT Pro API key (sent as the `apikey` header); empty for the free tier
         'tzkt_api_key'              => $env('TEZOS_TZKT_API_KEY', ''),
 
+        // A caught-up sync waits for the next block on TzKT's WebSocket instead of polling /head
+        'tzkt_websocket'            => $envBool('TEZOS_TZKT_WEBSOCKET', true),
+
         // Tezos node RPCs, comma-separated, for bakers' DAL participation and protocol constants. Several, so one
         // falling behind or failing is skipped (Vendors/TezosRpc.php); earlier ones are preferred.
         'rpc_urls'                  => $env('TEZOS_RPC_URLS', 'https://rpc.tzkt.io/mainnet,https://rpc.tzbeta.net,https://mainnet.smartpy.io'),

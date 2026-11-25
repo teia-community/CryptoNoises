@@ -94,6 +94,10 @@ class Config
     // TzKT Pro key, sent as the `apikey` header to the TzKT URLs above; empty for the free tier
     public string $tzktApiKey;
 
+    // Whether a caught-up sync waits for the next block on TzKT's WebSocket (Vendors/TzktHeadStream.php); it falls
+    // back to polling /head on its own when the socket is not available
+    public bool $tzktWebsocket;
+
     // Tezos node RPCs, for what only the protocol knows (a baker's DAL participation); see Vendors/TezosRpc.php.
     // Empty = not used.
     /** @var string[] */
@@ -139,6 +143,7 @@ class Config
         $this->tzktApiUrl                           = rtrim((string) Environment::get('tezos.tzkt_api_url', self::kTZKT_API_DEFAULT), '/');
         $this->tzktAliasesUrl                       = rtrim((string) Environment::get('tezos.tzkt_aliases_url', self::kTZKT_API_DEFAULT), '/');
         $this->tzktApiKey                           = trim((string) Environment::get('tezos.tzkt_api_key', ''));
+        $this->tzktWebsocket                        = (bool) Environment::get('tezos.tzkt_websocket', true);
         $rpcUrls                                    = Environment::get('tezos.rpc_urls', 'https://rpc.tzkt.io/mainnet,https://rpc.tzbeta.net,https://mainnet.smartpy.io');
         $this->tezosRpcUrls                         = array_values(array_filter(array_map(fn ($url) => rtrim(trim((string) $url), '/'),
                                                           is_array($rpcUrls) ? $rpcUrls : explode(',', (string) $rpcUrls))));

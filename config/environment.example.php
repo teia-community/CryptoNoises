@@ -106,6 +106,10 @@ return [
         // TzKT Pro API key, sent as the `apikey` header to the TzKT URLs above. '' = the free tier.
         'tzkt_api_key'                          => '',
 
+        // A caught-up sync waits for the next block on TzKT's WebSocket (<tzkt_api_url>/ws) instead of polling
+        // /head; it polls by itself while the socket is not available. false = always poll.
+        'tzkt_websocket'                        => true,
+
         // Tezos node RPCs, comma-separated or a list, for bakers' DAL participation and protocol constants. The
         // freshest are used, earlier ones first; one behind the chain or failing is skipped. '' = no DAL alerts.
         'rpc_urls'                              => 'https://rpc.tzkt.io/mainnet,https://rpc.tzbeta.net,https://mainnet.smartpy.io',

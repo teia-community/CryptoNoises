@@ -693,7 +693,12 @@ What the client does to follow TzKT's API terms and docs:
   (400, 404, a 204) are final. Responses are requested gzip-compressed.
 - **Paging** by id cursor (`id.gt`, sorted by id), never by offset, and `select` where only some fields are needed.
 - **Finality.** The sync stays two levels behind TzKT's head: a Tezos block is final once two more sit on top of
-  it, and TzKT reorganises the levels above. Once caught up, it looks at the head every 3 s - blocks come every 6 s.
+  it, and TzKT reorganises the levels above.
+- **Real time over the WebSocket API,** as TzKT recommends. A caught-up sync waits for the next block on
+  `<TEZOS_TZKT_API_URL>/ws` (SignalR's JSON protocol, `SubscribeToHead`; ReactPHP and Pawl, which the Discord bot
+  already uses) and picks it up within a fraction of a second, without asking `/head`. When the socket cannot be
+  opened or drops - a reverse proxy in front of a self-hosted TzKT must pass WebSocket upgrades - it polls `/head`
+  every 3 s (half a block time) and tries the socket again every minute. `TEZOS_TZKT_WEBSOCKET=0` always polls.
 - **A TzKT that stalls** still answers, with old data. Baker alerts, which are about now, check `/head` first and
   skip the pass while TzKT reports `synced: false` or its head block is over three minutes old.
 

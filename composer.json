@@ -23,7 +23,9 @@
         "ext-pdo": "*",
         "ext-pdo_mysql": "*",
 
-        "team-reflex/discord-php": "^10.72"
+        "team-reflex/discord-php": "^10.72",
+        "ratchet/pawl": "^0.4.3",
+        "react/event-loop": "^1.6"
     },
     "require-dev": {
         "phpstan/phpstan": "^2.3"
