@@ -17,6 +17,10 @@ return [
         'time_limit_sec'    => 55,
     ],
 
+    // Appends the notification class and the event / notification ids to every message sent. For debugging only:
+    // on a development environment they are written to the log either way.
+    'notification_debug_footer' => false,
+
     //------------------------------------------------------------------------------------------------------------------
     // CryptoNoises (bots + API)
 

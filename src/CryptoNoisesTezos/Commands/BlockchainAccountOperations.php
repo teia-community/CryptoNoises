@@ -32,7 +32,10 @@ class BlockchainAccountOperations extends AbstractCommand
         {
             $this->seedIfNeverRan();
 
-            $runner->run($tsStart, (int) $this->getCmdVar('limit', 1000000));
+            // No level cap by default, unlike the other syncs: this one does thousands of levels a second while it
+            // catches up, so a 1,000,000-level cap ended a run every few minutes - an exit and a restart each time.
+            // The process lifetime (runTimeLimit) bounds a run anyway.
+            $runner->run($tsStart, (int) $this->getCmdVar('limit', PHP_INT_MAX));
             $this->logMsg("END.");
         }
         catch (Exception $e)

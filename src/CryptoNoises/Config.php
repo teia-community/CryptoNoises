@@ -74,6 +74,7 @@ class Config
     public string $dbMain;                                                  // main DB name (from DSN), for cross-DB queries
 
     public string $publicDomain;                                            // public-app/ base URL
+    public bool $notificationDebugFooter;                                   // debug ids appended to sent messages
     public string $publicApiUrl;                                            // public-api/ base URL (Telegram webhooks)
 
     /** @var array<string, mixed> Public project links (environment.php: api.links) */
@@ -132,6 +133,7 @@ class Config
 
         $this->dbMain                               = \VssCfg::cfg()->getDbName('dbMain');
         $this->publicDomain                         = (string) Environment::get('api.public_domain');
+        $this->notificationDebugFooter              = (bool) Environment::get('notification_debug_footer', false);
         $this->publicApiUrl                         = (string) Environment::get('api.public_api_url');
         $this->links                                = (array) Environment::get('api.links', []);
 
