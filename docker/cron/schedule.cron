@@ -25,6 +25,7 @@ SHELL=/bin/bash
 # Drops the raw log tables both the sync and the analyzer have passed
 0    *  *  *  *  /usr/local/bin/cn-cron /opt/cryptonoises/commands/run-tezos /blockchain/transaction/cleanup offset=50000
 0    *  *  *  *  /usr/local/bin/cn-cron /opt/cryptonoises/commands/run-tezos /blockchain/bigmap-updates/cleanup offset=50000
+15   3  *  *  *  /usr/local/bin/cn-cron /opt/cryptonoises/commands/run-tezos /blockchain/account-operations/cleanup offset=50000
 
 #=======================================================================================================================
 # Bots janitors and housekeeping (harmless with the bots stopped: they find nothing to do)

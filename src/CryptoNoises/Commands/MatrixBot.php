@@ -78,7 +78,7 @@ class MatrixBot extends AbstractCommand
         }
         catch (Throwable $e)
         {
-            $this->logErr('Cross-signing: '.$e->getMessage());
+            $this->logErr('ERROR: Cross-signing: '.$e->getMessage());
         }
 
         while (Time::Microtime() - $tsStart <= Config::runTimeLimit() && !Shutdown::Requested())
@@ -128,6 +128,13 @@ class MatrixBot extends AbstractCommand
 
             try
             {
+                if ($roomId === Config::cfg()->matrixAlertsRoom)
+                {
+                    MatrixClient::I()->joinRoom($roomId);
+                    $this->logMsg('Joined the alerts room');
+                    continue;
+                }
+
                 MatrixClient::I()->joinRoom($roomId);
                 $members = MatrixClient::I()->joinedMembers($roomId);
                 $this->roomSizes[$roomId] = count($members);
@@ -147,7 +154,7 @@ class MatrixBot extends AbstractCommand
             }
             catch (Throwable $e)
             {
-                $this->logErr("Invite to $roomId: ".$e->getMessage());
+                $this->logErr("ERROR: Invite to $roomId: ".$e->getMessage());
             }
         }
     }
@@ -158,6 +165,9 @@ class MatrixBot extends AbstractCommand
 
         foreach ($rooms as $roomId => $room)
         {
+            if ($roomId === Config::cfg()->matrixAlertsRoom)
+                continue;
+
             foreach ($room['timeline']['events'] ?? [] as $event)
             {
                 $sender = $event['sender'] ?? '';
@@ -185,7 +195,7 @@ class MatrixBot extends AbstractCommand
                 }
                 catch (Throwable $e)
                 {
-                    $this->logErr("Message in $roomId: ".$e->getMessage());
+                    $this->logErr("ERROR: Message in $roomId: ".$e->getMessage());
                 }
             }
         }
@@ -221,7 +231,7 @@ class MatrixBot extends AbstractCommand
             }
             catch (Throwable $e)
             {
-                $this->logErr("Welcome in $roomId: ".$e->getMessage());
+                $this->logErr("ERROR: Welcome in $roomId: ".$e->getMessage());
             }
         }
     }

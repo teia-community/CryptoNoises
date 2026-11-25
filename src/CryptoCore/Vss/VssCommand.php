@@ -91,6 +91,10 @@ class VssCommand
     protected function logErr(string $msg)
     {
         $this->logMsg($msg, "\n", true);
+
+        // Failures ("ERROR: ...") also go to the operators, when the bots side is there to send them
+        if (str_starts_with($msg, 'ERROR') && class_exists(\CryptoNoises\Core\OpsAlerts::class))
+            \CryptoNoises\Core\OpsAlerts::Send('🛑 ERROR', static::class.': '.substr($msg, 7));
     }
 
     public function getCmdVar(string $lookupKey, $defaultValue = null)

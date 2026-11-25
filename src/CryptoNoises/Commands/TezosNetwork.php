@@ -29,7 +29,7 @@ class TezosNetwork extends AbstractCommand
 
         try
         {
-            $lastSyncedLevel = \CryptoNoises\GatewayTezos\Gateway::GetLastFullySyncedBlock();
+            $lastSyncedLevel = \CryptoNoises\GatewayTezos\Gateway::GetLastFullyAnalyzedBlock();
             $progress = new ProgressLog('analyze for notifications');
 
             while (true)
@@ -54,14 +54,14 @@ class TezosNetwork extends AbstractCommand
 
                 // $level is the next one to analyze, so everything before it is done. $lastSyncedLevel is only
                 // re-read once the loop catches up with it, so the target is read fresh, and only when printing.
-                $progress->report($level - 1, fn () => \CryptoNoises\GatewayTezos\Gateway::GetLastFullySyncedBlock(), 'synced');
+                $progress->report($level - 1, fn () => \CryptoNoises\GatewayTezos\Gateway::GetLastFullyAnalyzedBlock(), 'analyzed');
 
                 if ($level > $lastSyncedLevel)
                 {
-                    $this->logMsg("Want to analyze level #$level, but last synced level is #$lastSyncedLevel. Wait 1 sec and try again..");
+                    $this->logMsg("Want to analyze level #$level, but the last analyzed level is #$lastSyncedLevel. Wait 1 sec and try again..");
                     sleep(1);
 
-                    $lastSyncedLevel = \CryptoNoises\GatewayTezos\Gateway::GetLastFullySyncedBlock();
+                    $lastSyncedLevel = \CryptoNoises\GatewayTezos\Gateway::GetLastFullyAnalyzedBlock();
                     continue;
                 }
 
@@ -258,7 +258,7 @@ class TezosNetwork extends AbstractCommand
                 }
 
                 $synced  = \CryptoNoises\GatewayTezos\Gateway::GetLastAccountOperationsSyncedBlock();
-                $indexer = \CryptoNoises\GatewayTezos\Gateway::GetLastFullySyncedBlock();
+                $indexer = \CryptoNoises\GatewayTezos\Gateway::GetLastFullyAnalyzedBlock();
 
                 if ($synced === null || $indexer === null)
                 {
@@ -266,7 +266,7 @@ class TezosNetwork extends AbstractCommand
                     continue;
                 }
 
-                $progress->report($cursor, min($synced, $indexer), 'synced');
+                $progress->report($cursor, min($synced, $indexer), 'analyzed');
 
                 $levelTo = min($synced, $indexer, $cursor + self::kACCOUNT_OPS_CHUNK);
 

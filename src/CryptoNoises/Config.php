@@ -82,6 +82,7 @@ class Config
     // decrypts for it - and its user id. The password is kMATRIX_PASSWORD (consts-secrets.php). Empty = no Matrix bot.
     public string $matrixProxyUrl = '';
     public string $matrixUser = '';
+    public string $matrixAlertsRoom = '';      // room id for operator alerts (OpsAlerts); '' = none
 
     /** @var array<string, mixed> Public project links (environment.php: api.links) */
     private array $links = [];
@@ -145,6 +146,7 @@ class Config
 
         $this->matrixProxyUrl                       = rtrim((string) Environment::get('api.matrix.proxy_url', ''), '/');
         $this->matrixUser                           = (string) Environment::get('api.matrix.user', '');
+        $this->matrixAlertsRoom                     = (string) Environment::get('api.matrix.alerts_room', '');
 
         $this->limitWallets                         = (int) Environment::get('api.limits.wallets', 50);
         $this->limitFollowing                       = (int) Environment::get('api.limits.following', 1000);

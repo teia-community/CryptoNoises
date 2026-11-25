@@ -19,6 +19,19 @@ class AnalyzeHelper
 
     //------------------------------------------------------------------------------------------------------------------
 
+    /** The last level the syncs and the analyzers have all finished: notifications need the analyzed token data */
+    public static function GetLastFullyAnalyzedBlock(): ?int
+    {
+        $synced     = self::GetLastFullySyncedBlock();
+        $txAnalyzed = Models\Config::model()->getValue('TezosAnalyzer.LastSyncedLevel');
+        $bmAnalyzed = self::GetLastBigmapsAnalyzedBlock();
+
+        if ($synced === null || $txAnalyzed === null || $bmAnalyzed === null)
+            return null;
+
+        return min($synced, (int) $txAnalyzed, $bmAnalyzed);
+    }
+
     public static function GetLastTransactionsSyncedBlock(): ?int
     {
         return Models\FixerTransactionsSync::model()->getLastSuccessLevelIndex();
