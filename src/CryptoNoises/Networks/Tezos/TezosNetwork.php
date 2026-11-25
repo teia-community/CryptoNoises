@@ -81,6 +81,9 @@ class TezosNetwork extends AbstractNetwork
 
         'CryptoNoises\Networks\Tezos\Hunters\TeiaCommentsHunter',
 
+        // Not a marketplace either: messages to a wallet in tez.cool's on-chain chats
+        'CryptoNoises\Networks\Tezos\Hunters\TezCoolHunter',
+
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         // Deprecated Marketplaces
 

@@ -256,6 +256,18 @@ trait AbstractBot_Notification_Events
             $notification   = Notification\Transaction\BakerParameters::I($user);
             $thresholdScope = null;
         }
+        else if ($notificationType == Enum\NotificationType::ChatMessage)
+        {
+            $notifyFilter   = OptionsNotifier::kNotify_Messages;
+            $notification   = Notification\Transaction\ChatMessage::I($user);
+            $thresholdScope = null;
+        }
+        else if ($notificationType == Enum\NotificationType::ChatReply)
+        {
+            $notifyFilter   = OptionsNotifier::kNotify_Messages;
+            $notification   = Notification\Transaction\ChatReply::I($user);
+            $thresholdScope = null;
+        }
         else if ($notificationType == Enum\NotificationType::Origination)
         {
             $notifyFilter   = OptionsNotifier::kNotify_Origination;
@@ -564,9 +576,11 @@ trait AbstractBot_Notification_Events
             case Enum\NotificationType::TokenComment:
             case Enum\NotificationType::TokenCommentReply:
 
-            // A baker's terms and an origination carry no amount worth showing
+            // A baker's terms, an origination and a chat message carry no amount worth showing
             case Enum\NotificationType::BakerParameters:
             case Enum\NotificationType::Origination:
+            case Enum\NotificationType::ChatMessage:
+            case Enum\NotificationType::ChatReply:
                 break;
 
             // The delegated balance, or the tez moved in or out of a stake
@@ -879,6 +893,11 @@ trait AbstractBot_Notification_Events
 
             $notification->bind('{###EXPIRE_DATETIME###}',  Phrase::FriendlyDateTime($expireDateTime));
             $notification->bind('{###EXPIRE_DURATION###}',  Phrase::FriendlyDuration($expireDuration));
+        }
+
+        if ($notificationType == Enum\NotificationType::ChatMessage)
+        {
+            $notification->bind('{###ENCRYPTED###}', !empty($customData['encrypted']) ? '🔒 End-to-end encrypted' : Notification::HIDE_ME);
         }
 
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

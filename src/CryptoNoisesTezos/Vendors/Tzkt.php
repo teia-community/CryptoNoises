@@ -227,6 +227,17 @@ class Tzkt extends AbstractVendor
         return $result->isSuccess() && isset($result->data[0]) && is_array($result->data[0]) ? $result->data[0] : null;
     }
 
+    /**
+     * Current value of one bigmap key, or null when the key does not exist or TzKT did not answer. Core data, so any
+     * TzKT serves it, a self-hosted one included.
+     */
+    public static function GetBigmapKeyValue(int $bigmap, string $key): ?array
+    {
+        $result = self::GetDataJson(self::api()."/bigmaps/$bigmap/keys?key=".rawurlencode($key)."&select=value&limit=1");
+
+        return $result->isSuccess() && isset($result->data[0]) && is_array($result->data[0]) ? $result->data[0] : null;
+    }
+
     /** @var array<string, ?string> address => alias (null = none, or the lookup failed), per process */
     private static array $aliasCache = [];
 

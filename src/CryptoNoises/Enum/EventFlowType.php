@@ -25,6 +25,9 @@ abstract class EventFlowType
     const TokenComment                      = 'token-comment';                 // somebody commented on a token
     const TokenCommentReply                 = 'token-comment-reply';            // ... answering another comment
 
+    const ChatMessage                       = 'chat-message';                   // a message sent to a wallet (Chad Chat)
+    const ChatReply                         = 'chat-reply';                     // a reply to the wallet's chat message (Trollbox)
+
     const AuctionStart                      = 'auction-start';
     const AuctionEndFailed                  = 'auction-failed';
     const AuctionCancel                     = 'auction-cancel';

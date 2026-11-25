@@ -28,6 +28,9 @@ abstract class NotificationType
     const TokenComment                      = 'token-comment';
     const TokenCommentReply                 = 'token-comment-reply';
 
+    const ChatMessage                       = 'chat-message';
+    const ChatReply                         = 'chat-reply';
+
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     const TokenBuy                          = 'token-buy';
