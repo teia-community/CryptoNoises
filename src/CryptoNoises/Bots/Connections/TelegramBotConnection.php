@@ -139,6 +139,66 @@ class TelegramBotConnection
     const kDELIVERY_RETRY_DELAY             = 3; // seconds
 
     private ?string $lastSendError = null;
+    private ?int $lastSendErrorCode = null;
+
+    //------------------------------------------------------------------------------------------------------------------
+    // Telegram's limits (core.telegram.org/bots/faq): about one message a second in a chat, 20 a minute in a group or
+    // channel, about 30 a second in all. Past them it answers 429 with parameters.retry_after. The notifier paces its
+    // sends to stay under them - a backlog for one user (an indexer catching up, say) would otherwise hit 429 within
+    // a second - and every send waits out a 429 instead of failing. Interactive replies are not paced: a short burst
+    // in answer to a user's own command is within what Telegram allows.
+
+    const kPACE_CHAT_SEC                    = 1.05;
+    const kPACE_GROUP_SEC                   = 3.1;      // groups and channels: chat ids below zero
+    const kPACE_ALL_SEC                     = 0.04;
+    const kMAX_429_RETRIES                  = 3;
+    const kMAX_RETRY_AFTER_SEC              = 60;
+
+    /** @var array<string, float> chat id => when the last message went to it (this process) */
+    private static array $lastSentAt = [];
+    private static float $lastAnySentAt = 0;
+
+    /** Set on the notifier path (deliverBotNotifications) */
+    private bool $paced = false;
+
+    /**
+     * Runs one Bot API call to the current chat: paced on the notifier path, and repeated after a 429 once Telegram's
+     * retry_after has passed (up to kMAX_429_RETRIES times, each wait at most kMAX_RETRY_AFTER_SEC).
+     */
+    private function throttled(callable $request)
+    {
+        $chat = (string) ($this->user->platformChannelId ?? '');
+
+        for ($attempt = 0; ; $attempt++)
+        {
+            if ($this->paced)
+                $this->waitForSendSlot($chat);
+
+            $result = $request();
+            self::$lastSentAt[$chat] = self::$lastAnySentAt = microtime(true);
+
+            $retryAfter = (is_object($result) && empty($result->ok) && (int) ($result->error_code ?? 0) === 429)
+                ? max(1, (int) ($result->parameters->retry_after ?? 1))
+                : null;
+
+            if ($retryAfter === null || $attempt >= self::kMAX_429_RETRIES || $retryAfter > self::kMAX_RETRY_AFTER_SEC
+                || \CryptoCore\Process\Shutdown::Requested())
+                return $result;
+
+            Log::Notice(get_class($this), __FUNCTION__, "Telegram rate limit for chat $chat: retrying in {$retryAfter} s");
+            sleep($retryAfter + 1);
+        }
+    }
+
+    private function waitForSendSlot(string $chat): void
+    {
+        $interval = str_starts_with($chat, '-') ? self::kPACE_GROUP_SEC : self::kPACE_CHAT_SEC;
+        $readyAt  = max((self::$lastSentAt[$chat] ?? 0) + $interval, self::$lastAnySentAt + self::kPACE_ALL_SEC);
+        $wait     = $readyAt - microtime(true);
+
+        if ($wait > 0)
+            usleep((int) ($wait * 1e6));
+    }
 
     /**
      * Notifier path: every message must reach Telegram. A failed message is sent once more after a short delay,
@@ -148,6 +208,8 @@ class TelegramBotConnection
      */
     public function deliverBotNotifications(?Notification $notification): void
     {
+        $this->paced = true;
+
         while ($notification !== null)
         {
             if (!$this->sendNotification($notification))
@@ -197,6 +259,10 @@ class TelegramBotConnection
 
             if ($result)
                 return true;
+
+            // Still rate-limited after the retries: a text-only message now would be refused too
+            if ($this->lastSendErrorCode === 429)
+                return false;
         }
         else if ($imageUrl)
         {
@@ -204,6 +270,10 @@ class TelegramBotConnection
 
             if ($result)
                 return true;
+
+            // Still rate-limited after the retries: a text-only message now would be refused too
+            if ($this->lastSendErrorCode === 429)
+                return false;
         }
 
         return $this->sendMessage($message, $inlineKeyboard, $editMessageId) !== null;
@@ -296,24 +366,24 @@ class TelegramBotConnection
 
             if ($editMessageId)
             {
-                $result = $this->client->editMessageText(
+                $result = $this->throttled(fn () => $this->client->editMessageText(
                     text:                   $message,
                     chat_id:                $this->user->platformChannelId,
                     message_id:             $editMessageId,
                     parse_mode:             self::FORMAT_HTML,
                     link_preview_options:   self::LINK_PREVIEW_DISABLED,
                     reply_markup:           $menu
-                );
+                ));
             }
             else
             {
-                $result = $this->client->sendMessage(
+                $result = $this->throttled(fn () => $this->client->sendMessage(
                     chat_id:                $this->user->platformChannelId,
                     text:                   $message,
                     parse_mode:             self::FORMAT_HTML,
                     link_preview_options:   self::LINK_PREVIEW_DISABLED,
                     reply_markup:           $menu
-                );
+                ));
             }
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -346,13 +416,13 @@ class TelegramBotConnection
 
             $menu = $inlineKeyboard ? ['inline_keyboard' => $inlineKeyboard] : null;
 
-            $result = $this->client->sendPhoto(
+            $result = $this->throttled(fn () => $this->client->sendPhoto(
                 chat_id:        $this->user->platformChannelId,
                 photo:          $imageUrl,
                 caption:        $caption,
                 parse_mode:     self::FORMAT_HTML,
                 reply_markup:   $menu
-            );
+            ));
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -385,14 +455,14 @@ class TelegramBotConnection
 
             $menu = $inlineKeyboard ? ['inline_keyboard' => $inlineKeyboard] : null;
 
-            $result = $this->client->sendAnimation(
+            $result = $this->throttled(fn () => $this->client->sendAnimation(
                 chat_id:        $this->user->platformChannelId,
                 animation:      $animeUrl,
                 thumbnail:      $thumbUrl,
                 caption:        $caption,
                 parse_mode:     self::FORMAT_HTML,
                 reply_markup:   $menu
-            );
+            ));
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -426,14 +496,14 @@ class TelegramBotConnection
 
             $menu = $inlineKeyboard ? ['inline_keyboard' => $inlineKeyboard] : null;
 
-            $result = $this->client->sendVideo(
+            $result = $this->throttled(fn () => $this->client->sendVideo(
                 chat_id:        $this->user->platformChannelId,
                 video:          $videoUrl,
                 thumbnail:      $thumbUrl,
                 caption:        $caption,
                 parse_mode:     self::FORMAT_HTML,
                 reply_markup:   $menu
-            );
+            ));
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -468,9 +538,9 @@ class TelegramBotConnection
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             # https://core.telegram.org/bots/api#available-methods
 
-            $result = $this->client->sendMediaGroup(
+            $result = $this->throttled(fn () => $this->client->sendMediaGroup(
                 $this->user->platformChannelId, #   $chat_id
-                $media);                        #   $media .....
+                $media));                        #   $media .....
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -519,9 +589,9 @@ class TelegramBotConnection
             if (!isset($this->user) || $this->user->platformChannelId == null)
                 throw new Exception("platformChannelId is null");
 
-            $result = $this->client->deleteMessage(
+            $result = $this->throttled(fn () => $this->client->deleteMessage(
                 $this->user->platformChannelId,
-                $messageId);
+                $messageId));
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -544,6 +614,8 @@ class TelegramBotConnection
 
     private function postAnalyzeResponse($subtype, $message, $request, $response): void
     {
+        $this->lastSendErrorCode = $response->ok ? null : (int) ($response->error_code ?? 0);
+
         if (!$response->ok)
         {
             $errorMsg = '#'.$response->error_code.': '.$response->description;
