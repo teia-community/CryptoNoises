@@ -29,6 +29,10 @@ class OptionsNotifier
     // not want to hear about comments does not want half of them either.
     const kNotify_TokenComment                  = 'notify_token_comment';
 
+    // Delegation, staking, and your baker changing its terms: one switch, it is all about where your tez are staked
+    const kNotify_Staking                       = 'notify_staking';
+    const kNotify_Origination                   = 'notify_origination';
+
     const kNotify_Domains                       = 'notify_domains';
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -116,6 +120,8 @@ class OptionsNotifier
 
         $this->addType(OptionsNotifier::kNotify_TokenUpdateMetadata,    true);
         $this->addType(OptionsNotifier::kNotify_TokenComment,           true);
+        $this->addType(OptionsNotifier::kNotify_Staking,                true);
+        $this->addType(OptionsNotifier::kNotify_Origination,            true);
         $this->addType(OptionsNotifier::kNotify_Domains,                true);
     }
 
@@ -135,6 +141,8 @@ class OptionsNotifier
 
         $this->addType(OptionsNotifier::kNotify_TokenUpdateMetadata,    true);
         $this->addType(OptionsNotifier::kNotify_TokenComment,           true);
+        $this->addType(OptionsNotifier::kNotify_Staking,                true);
+        $this->addType(OptionsNotifier::kNotify_Origination,            true);
     }
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -159,6 +167,8 @@ class OptionsNotifier
             case OptionsNotifier::kNotify_TokenList:            $title = Phrase::I()->filterTypeTokenList; break;
             case OptionsNotifier::kNotify_TokenUpdateMetadata:  $title = Phrase::I()->filterTypeTokenUpdateMetadata; break;
             case OptionsNotifier::kNotify_TokenComment:         $title = Phrase::I()->filterTypeTokenComment; break;
+            case OptionsNotifier::kNotify_Staking:              $title = Phrase::I()->filterTypeStaking; break;
+            case OptionsNotifier::kNotify_Origination:          $title = Phrase::I()->filterTypeOrigination; break;
 
             case OptionsNotifier::kNotify_Domains:              $title = Phrase::I()->filterTypeDomainsEvents; break;
 
@@ -222,6 +232,47 @@ class OptionsNotifier
 
         Models\OptionsNotifier::model()->save($this->userId, $this->walletAdid, [
             $key => $value,
+        ]);
+    }
+
+    //------------------------------------------------------------------------------------------------------------------
+    // Reminder to finalize unstaked tez: how long after they unlock, if they are still not finalized
+
+    const kFinalizeReminderColumn               = 'finalize_reminder_sec';
+    const kFinalizeReminderOff                  = -1;
+    const kFinalizeReminderDefault              = 86400;    // one day: time for the staker, or a service, to do it
+
+    /** key => seconds after unlock; kFinalizeReminderOff = no reminder. Keys travel in callback data. */
+    public static function GetFinalizeReminderValues(): array
+    {
+        return [
+            'off' => self::kFinalizeReminderOff,
+            'd0'  => 0,
+            'd1'  => 86400,
+            'd3'  => 3 * 86400,
+            'd7'  => 7 * 86400,
+        ];
+    }
+
+    public function getFinalizeReminderSec(): int
+    {
+        $value = $this->data[self::kFinalizeReminderColumn] ?? null;
+
+        if ($value === null || !in_array((int) $value, self::GetFinalizeReminderValues(), true))
+            return self::kFinalizeReminderDefault;
+
+        return (int) $value;
+    }
+
+    public function setFinalizeReminderSec(int $seconds): void
+    {
+        if (!in_array($seconds, self::GetFinalizeReminderValues(), true))
+            return;
+
+        $this->data[self::kFinalizeReminderColumn] = $seconds;
+
+        Models\OptionsNotifier::model()->save($this->userId, $this->walletAdid, [
+            self::kFinalizeReminderColumn => $seconds,
         ]);
     }
 

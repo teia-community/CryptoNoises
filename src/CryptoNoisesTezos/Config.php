@@ -84,6 +84,10 @@ class Config
 
     public string $tzktApiUrl;
 
+    // Where account aliases ("Finn", a baker's name) are looked up when the data from tzktApiUrl has none. Aliases
+    // come from TzKT's metadata service, which a self-hosted TzKT does not run. Empty = no lookups.
+    public string $tzktAliasesUrl;
+
     public string $ipfsGatewayUrl;
 
     public string $ipfsLocalBaseUrl;
@@ -122,6 +126,7 @@ class Config
         // All chain data comes from here. The public api.tzkt.io rate-limits, and a scaled-up set of workers will
         // hit that limit, so point this at a TzKT you control (see Vendors/Tzkt.php).
         $this->tzktApiUrl                           = rtrim((string) Environment::get('tezos.tzkt_api_url', self::kTZKT_API_DEFAULT), '/');
+        $this->tzktAliasesUrl                       = rtrim((string) Environment::get('tezos.tzkt_aliases_url', self::kTZKT_API_DEFAULT), '/');
 
         // Gateway that token metadata and media are read through. The public ipfs.io gateway rate-limits hard
         // these days, which shows up as "IPFS returned empty data", so point this at a gateway you control.

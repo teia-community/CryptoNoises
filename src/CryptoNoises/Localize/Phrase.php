@@ -64,6 +64,8 @@ class Phrase
     public string $filterTypeTokenList                  = '🟠 Token listing';
     public string $filterTypeTokenUpdateMetadata        = '🟡 Token metadata updates';
     public string $filterTypeTokenComment              = '💬 Comments on your tokens';
+    public string $filterTypeStaking                   = '🥩 Staking & delegation';
+    public string $filterTypeOrigination               = '📜 Contracts you originate';
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -73,6 +75,9 @@ class Phrase
 
     public string $thresholdOrMore                      = 'or more';
     public string $thresholdNotSet                      = 'Not set';
+
+    public string $finalizeReminder                     = '⏰ Finalize reminder';
+    public string $finalizeReminderInfo                 = 'When unstaked tez can be finalized but still are not, remind me:';
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -167,6 +172,20 @@ class Phrase
     }
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    /** Label of a finalize-reminder choice (seconds after unlock; OptionsNotifier::kFinalizeReminderOff = off) */
+    public static function FinalizeReminder(int $seconds): string
+    {
+        if ($seconds < 0)
+            return 'Off';
+
+        if ($seconds == 0)
+            return 'As soon as they unlock';
+
+        $days = intdiv($seconds, 86400);
+
+        return $days == 1 ? '1 day after unlock' : "$days days after unlock";
+    }
 
     public static function FriendlyDateTime(string $datetime): string
     {

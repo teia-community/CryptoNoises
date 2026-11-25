@@ -209,4 +209,140 @@ class TezosNetwork extends AbstractCommand
 
         $this->logMsg("Done");
     }
+
+    //------------------------------------------------------------------------------------------------------------------
+    // Account operations: delegations, staking, baker parameter changes, originations -> events
+
+    // Cursor of analyzeNewAccountOperations(): the last level analyzed
+    const kACCOUNT_OPS_CURSOR       = 'TezosAccountOpsAnalyzer.LastSyncedLevel';
+
+    // Levels per pass. These operations are sparse (~174 per 10k levels near the head), so a pass is a few rows
+    const kACCOUNT_OPS_CHUNK        = 10000;
+
+    /**
+     * Turns synced account operations into events, a range of levels at a time, on its own cursor.
+     *
+     * The range never goes past the level the rest of the indexer has fully synced. The account-operation sync is
+     * cheap and can run far ahead - on a stack syncing from block 1, years ahead - and notifications about this
+     * year's staking must not go out while every other notification is still walking through 2021.
+     *
+     * Saving an event twice is harmless: EventsFlow::insert() finds an existing event by its operation id and
+     * sub-id, and EventFlow::save() then returns before notifying anybody. A pass that dies before moving the
+     * cursor is simply redone.
+     */
+    public function analyzeNewAccountOperations(): void
+    {
+        $tsStart = Time::Microtime();
+
+        set_time_limit(Config::runTimeLimit() + Config::kJOBS_TIMEOUT_TEZOS_TRANSACTION_ANALYZE);
+
+        if (!$this->checkLockAndWaitUntilNoOtherInstanceRuns('command-lock.tezos-network.analyze-account-operations', Config::kJOBS_TIMEOUT_DEFAULT))
+            return;
+
+        $progress = new ProgressLog('analyze account operations');
+
+        try
+        {
+            while (Time::Microtime() - $tsStart <= Config::runTimeLimit() && !Shutdown::Requested())
+            {
+                Vss::dbCloseAll();
+
+                $cursor = $this->accountOperationsCursor();
+
+                if ($cursor === null)
+                {
+                    $this->logMsg("The account-operation sync has not run yet. Wait 5 sec..");
+                    sleep(5);
+                    continue;
+                }
+
+                $synced  = \CryptoNoises\GatewayTezos\Gateway::GetLastAccountOperationsSyncedBlock();
+                $indexer = \CryptoNoises\GatewayTezos\Gateway::GetLastFullySyncedBlock();
+
+                if ($synced === null || $indexer === null)
+                {
+                    sleep(1);
+                    continue;
+                }
+
+                $progress->report($cursor, min($synced, $indexer), 'synced');
+
+                $levelTo = min($synced, $indexer, $cursor + self::kACCOUNT_OPS_CHUNK);
+
+                if ($levelTo <= $cursor)
+                {
+                    sleep(1);
+                    continue;
+                }
+
+                $count = $this->analyzeAccountOperations($cursor + 1, $levelTo);
+
+                Models\Config::model()->setValue(self::kACCOUNT_OPS_CURSOR, (string) $levelTo);
+
+                $this->logMsg("Account operations #".($cursor + 1)."..#$levelTo: $count event(s)");
+            }
+
+            $this->logMsg("END.");
+        }
+        catch (Exception $e)
+        {
+            $this->logErr("ERROR: " . $e->getMessage());
+
+            // Without a pause, an error that persists becomes a restart loop under "restart: always"
+            sleep(30);
+        }
+    }
+
+    /**
+     * Re-analyzes a level range by hand (level=<from>-<to>), without touching the cursor. Events already saved are
+     * not saved or notified again.
+     */
+    public function analyzeRangeAccountOperations(): void
+    {
+        set_time_limit(3600);
+
+        $range = explode('-', (string) $this->getCmdVar('level'));
+
+        if ($range[0] === '')
+        {
+            $this->logErr("The level parameter is required: level=<from>-<to>");
+            return;
+        }
+
+        $levelFrom = (int) $range[0];
+        $levelTo   = (int) ($range[1] ?? $range[0]);
+
+        $count = $this->analyzeAccountOperations($levelFrom, $levelTo);
+
+        $this->logMsg("Account operations #$levelFrom..#$levelTo: $count event(s)", "\n", true);
+    }
+
+    private function analyzeAccountOperations(int $levelFrom, int $levelTo): int
+    {
+        $parser = new \CryptoNoises\Networks\Tezos\AccountOperationsParser();
+        $parser->analyze(\CryptoNoises\GatewayTezos\Gateway::GetAccountOperations($levelFrom, $levelTo));
+
+        return $parser->save();
+    }
+
+    /**
+     * The cursor, initialized on first use to just before the level the account-operation sync started from:
+     * an install that gains this feature starts where its sync starts, not at block 1.
+     */
+    private function accountOperationsCursor(): ?int
+    {
+        $cursor = Models\Config::model()->getValue(self::kACCOUNT_OPS_CURSOR);
+
+        if ($cursor !== null && $cursor !== '')
+            return (int) $cursor;
+
+        $first = \CryptoNoises\GatewayTezos\Gateway::GetAccountOperationsFirstLevel();
+
+        if ($first === null)
+            return null;
+
+        Models\Config::model()->setValue(self::kACCOUNT_OPS_CURSOR, (string) ($first - 1));
+
+        return $first - 1;
+    }
 }

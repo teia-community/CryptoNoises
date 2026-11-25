@@ -170,6 +170,11 @@ services:
     <<: *worker
     command: ["/opt/cryptonoises/commands/run-tezos", "/blockchain/bigmap-updates/sync-new"]
 
+  # Delegations, staking, baker parameter changes, originations -> account_operations (four TzKT endpoints)
+  stage-sync-account-ops:
+    <<: *worker
+    command: ["/opt/cryptonoises/commands/run-tezos", "/blockchain/account-operations/sync-new"]
+
   # Re-counts the bigmap updates of a block N levels back and rolls sync + analysis back on a mismatch.
   # Two independent passes: one about a minute behind the head, one about an hour.
   stage-sync-check-recent:
@@ -247,6 +252,20 @@ services:
   stage-wallet-events:
     <<: *worker
     command: ["/opt/cryptonoises/commands/run", "/tezos-network/analyze-transactions/new"]
+    profiles: ["bots"]
+
+  # Delegations, staking, baker parameter changes and originations -> events. Its own cursor, never ahead of
+  # the level the indexer has fully synced. Single instance, like every cursor.
+  stage-account-events:
+    <<: *worker
+    command: ["/opt/cryptonoises/commands/run", "/tezos-network/analyze-account-operations/new"]
+    profiles: ["bots"]
+
+  # Reminds stakers about unlocked tez still waiting to be finalized, after the delay each user picks in Settings.
+  # Reads the chain's current state, not history, so it is safe to run on a stand that is still catching up.
+  bots-unstake-reminders:
+    <<: *worker
+    command: ["/opt/cryptonoises/commands/run", "/tezos-network/unstake-reminders"]
     profiles: ["bots"]
 
   bots-wallets-sync:

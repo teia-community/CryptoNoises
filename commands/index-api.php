@@ -19,6 +19,12 @@ $f3->route('GET /tezos-network/analyze-transactions/new',       'CryptoNoises\Co
 $f3->route('GET /tezos-network/analyze-transactions/range',     'CryptoNoises\Commands\TezosNetwork->analyzeRangeTransactions');
 $f3->route('GET /tezos-network/analyze-transactions/non-synced','CryptoNoises\Commands\TezosNetwork->analyzeNonSyncedTransactions');
 
+$f3->route('GET /tezos-network/analyze-account-operations/new',  'CryptoNoises\Commands\TezosNetwork->analyzeNewAccountOperations');
+$f3->route('GET /tezos-network/analyze-account-operations/range','CryptoNoises\Commands\TezosNetwork->analyzeRangeAccountOperations');
+
+$f3->route('GET /tezos-network/unstake-reminders',               'CryptoNoises\Commands\UnstakeReminders->run');
+$f3->route('GET /tezos-network/unstake-reminders/once',          'CryptoNoises\Commands\UnstakeReminders->runOnce');
+
 $f3->route('GET /tezos-network/wallets/sync',                   'CryptoNoises\Commands\TezosNetwork->syncWalletsStates');
 
 $f3->route('GET /events/nfts-mint/tezos',                       'CryptoNoises\Commands\EventsTokensMint->tezos');

@@ -664,6 +664,51 @@ class EventFlow
             $this->pushEventNotificationByOwnerAdid($senderAdid, $senderAddress, $eventFlowId, NotificationType::Liquidity_Invest);
         }
 
+        //===[ ACCOUNT EVENTS ]==========================================================================================
+
+        // AccountOperationsParser puts the wallet each of these is about in target_address, and the variant in
+        // event_details, so there is exactly one recipient and the variant picks the notification
+
+        else if ($this->event_type == Enum\EventFlowType::Delegation)
+        {
+            $notificationType = match ($this->event_details) {
+                'set'    => NotificationType::DelegationSet,
+                'change' => NotificationType::DelegationChange,
+                'remove' => NotificationType::DelegationRemove,
+                default  => null,
+            };
+
+            if ($notificationType !== null)
+                $this->pushEventNotificationByOwnerAdid($targetAdid, $targetAddress, $eventFlowId, $notificationType);
+        }
+        else if ($this->event_type == Enum\EventFlowType::Staking)
+        {
+            $notificationType = match ($this->event_details) {
+                'stake'    => NotificationType::Stake,
+                'unstake'  => NotificationType::Unstake,
+                'finalize' => NotificationType::UnstakeFinalized,
+                default    => null,
+            };
+
+            if ($notificationType !== null)
+                $this->pushEventNotificationByOwnerAdid($targetAdid, $targetAddress, $eventFlowId, $notificationType);
+        }
+        else if ($this->event_type == Enum\EventFlowType::BakerParameters)
+        {
+            $this->pushEventNotificationByOwnerAdid($targetAdid, $targetAddress, $eventFlowId, NotificationType::BakerParameters);
+        }
+        else if ($this->event_type == Enum\EventFlowType::Origination)
+        {
+            $this->pushEventNotificationByOwnerAdid($targetAdid, $targetAddress, $eventFlowId, NotificationType::Origination);
+        }
+
+        // A reminder is per user - each chooses their own delay - but it is about one of their wallets, so it goes
+        // out as that wallet's notification (its name and balance, its settings) to that user only
+        else if ($this->event_type == Enum\EventFlowType::UnstakeFinalizable)
+        {
+            $this->pushEventNotificationForUserIdsAsOwner($this->userIds, $targetAdid, $targetAddress, $eventFlowId, NotificationType::UnstakeFinalizable);
+        }
+
         //===[ OTHERS ]=================================================================================================
 
         else if ($this->event_type == Enum\EventFlowType::Skipped)
@@ -715,6 +760,34 @@ class EventFlow
                 $priorityIndex,
                 $notificationType);
         }
+        return true;
+    }
+
+    /**
+     * Like pushEventNotificationForUserIds(), but as the owner of a wallet: only these users, and only if they still
+     * watch that wallet.
+     */
+    private function pushEventNotificationForUserIdsAsOwner($userIds, ?int $adid, ?string $address, int $eventFlowId, string $notificationType): bool
+    {
+        if (empty($userIds) || $adid === null || !TezosNetwork::IsWalletAddressValid($address))
+            return false;
+
+        $watchers = [];
+
+        foreach (Models\Users::model()->getActiveUsersByWalletAdid($adid) as $userItem)
+            $watchers[(int) $userItem['user_id']] = $userItem;
+
+        foreach ((array) $userIds as $userId)
+        {
+            $userItem = $watchers[(int) $userId] ?? null;
+
+            if ($userItem === null)
+                continue;   // stopped watching the wallet, or stopped the bot, since the reminder was due
+
+            Models\EventsNotifications::model()->insertNotifyTask($userItem['platform'], $userItem['user_id'],
+                $adid, $address, $eventFlowId, Models\EventsNotifications::kPRIORITY_INDEX_Normal, $notificationType);
+        }
+
         return true;
     }
 

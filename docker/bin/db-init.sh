@@ -69,7 +69,7 @@ else
     #
     # The data files seed block 1 so that the database gets the whole chain history, which takes days to catch up.
     # A later start level skips that history: the indexer then only knows tokens minted from that block on.
-    # All four values have to move together (see sql/data/README.md).
+    # All five values have to move together (see sql/data/README.md).
 
     start_level="${TEZOS_START_LEVEL:-1}"
 
@@ -80,6 +80,7 @@ else
 UPDATE fixer_transactions_sync      SET level = $start_level WHERE level = 1;
 UPDATE fixer_bigmap_updates_sync    SET level = $start_level WHERE level = 1;
 UPDATE fixer_bigmap_updates_analyze SET level = $start_level WHERE level = 1;
+UPDATE fixer_account_operations_sync SET level = $start_level WHERE level = 1;
 UPDATE config SET cfg_value = $((start_level - 1)) WHERE cfg_key = 'TezosAnalyzer.LastSyncedLevel';
 SQL
     fi

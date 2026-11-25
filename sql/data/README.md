@@ -29,9 +29,10 @@ Load into empty tables only, once: running it again fails on duplicate keys.
 ## Indexer start block
 
 The indexer scans the chain from block 1. The start point is set by the `tezos` data: an `'idle'` row with
-`level = 1` in `fixer_transactions_sync`, `fixer_bigmap_updates_sync` and `fixer_bigmap_updates_analyze`, and
-`TezosAnalyzer.LastSyncedLevel = 0` in `config` (always start level - 1). To start later, change all four values
-together before loading. With Docker, `TEZOS_START_LEVEL` in `.env` does this for you.
+`level = 1` in `fixer_transactions_sync`, `fixer_bigmap_updates_sync`, `fixer_bigmap_updates_analyze` and
+`fixer_account_operations_sync`, and `TezosAnalyzer.LastSyncedLevel = 0` in `config` (always start level - 1). To
+start later, change all five values together before loading. With Docker, `TEZOS_START_LEVEL` in `.env` does this
+for you.
 
 Starting from block 1 gives the database the whole history, and takes days to reach the chain head. A later start
 level catches up in minutes, with these consequences:

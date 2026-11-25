@@ -57,6 +57,21 @@ abstract class NotificationType
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+    const DelegationSet                     = 'delegation-set';
+    const DelegationChange                  = 'delegation-change';
+    const DelegationRemove                  = 'delegation-remove';
+
+    const Stake                             = 'stake';
+    const Unstake                           = 'unstake';
+    const UnstakeFinalized                  = 'unstake-finalized';
+    const UnstakeFinalizable                = 'unstake-finalizable';
+
+    const BakerParameters                   = 'baker-parameters';
+
+    const Origination                       = 'origination';
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
     const Exchange_CoinsToToken             = 'exchange-coins-to-token';
     const Exchange_TokenToCoins             = 'exchange-token-to-coins';
     const Exchange_TokenToToken             = 'exchange-token-to-token';

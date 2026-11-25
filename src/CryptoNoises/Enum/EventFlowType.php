@@ -34,6 +34,14 @@ abstract class EventFlowType
     const DomainExpires                     = 'domain-expires';
     const DomainExpired                     = 'domain-expired';
 
+    // Account-level operations (account_operations). event_details carries the variant: the delegation kind,
+    // or the staking action. target_address is always the wallet the event is about.
+    const Delegation                        = 'delegation';                     // set | change | remove
+    const Staking                           = 'staking';                        // stake | unstake | finalize
+    const BakerParameters                   = 'baker-parameters';               // one event per affected wallet
+    const Origination                       = 'origination';
+    const UnstakeFinalizable                = 'unstake-finalizable';          // reminder: one per unstake request and user
+
     const CollectionOffer                   = 'collection-offer';
 
     const ExchangeCoinsToToken              = 'exchange-coins-to-token';

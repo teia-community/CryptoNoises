@@ -8,6 +8,7 @@ INSERT INTO `config` (`cfg_key`, `cfg_value`) VALUES
   ('command-lock.analyze.bigmap-updates.max-level', NULL),
   ('command-lock.analyze.bigmap-updates.new', '0'),
   ('command-lock.analyze.transactions.new', '0'),
+  ('command-lock.blockchain.account-operations.sync-new', '0'),
   ('command-lock.blockchain.bigmap-updates.sync-check', '0'),
   ('command-lock.blockchain.bigmap-updates.sync-new', '0'),
   ('command-lock.blockchain.transaction.sync-new', '0'),

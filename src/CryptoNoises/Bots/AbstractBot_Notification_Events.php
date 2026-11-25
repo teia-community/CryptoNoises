@@ -206,6 +206,63 @@ trait AbstractBot_Notification_Events
             $thresholdScope = null;
         }
         #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        # Delegation and staking: one switch for all of it. The amounts are not payments - a delegated balance, tez
+        # moved in or out of a stake - so the transaction threshold does not apply to them.
+        else if ($notificationType == Enum\NotificationType::DelegationSet)
+        {
+            $notifyFilter   = OptionsNotifier::kNotify_Staking;
+            $notification   = Notification\Transaction\DelegationSet::I($user);
+            $thresholdScope = null;
+        }
+        else if ($notificationType == Enum\NotificationType::DelegationChange)
+        {
+            $notifyFilter   = OptionsNotifier::kNotify_Staking;
+            $notification   = Notification\Transaction\DelegationChange::I($user);
+            $thresholdScope = null;
+        }
+        else if ($notificationType == Enum\NotificationType::DelegationRemove)
+        {
+            $notifyFilter   = OptionsNotifier::kNotify_Staking;
+            $notification   = Notification\Transaction\DelegationRemove::I($user);
+            $thresholdScope = null;
+        }
+        else if ($notificationType == Enum\NotificationType::Stake)
+        {
+            $notifyFilter   = OptionsNotifier::kNotify_Staking;
+            $notification   = Notification\Transaction\Stake::I($user);
+            $thresholdScope = null;
+        }
+        else if ($notificationType == Enum\NotificationType::Unstake)
+        {
+            $notifyFilter   = OptionsNotifier::kNotify_Staking;
+            $notification   = Notification\Transaction\Unstake::I($user);
+            $thresholdScope = null;
+        }
+        else if ($notificationType == Enum\NotificationType::UnstakeFinalized)
+        {
+            $notifyFilter   = OptionsNotifier::kNotify_Staking;
+            $notification   = Notification\Transaction\UnstakeFinalized::I($user);
+            $thresholdScope = null;
+        }
+        else if ($notificationType == Enum\NotificationType::UnstakeFinalizable)
+        {
+            $notifyFilter   = OptionsNotifier::kNotify_Staking;
+            $notification   = Notification\Transaction\UnstakeFinalizable::I($user);
+            $thresholdScope = null;
+        }
+        else if ($notificationType == Enum\NotificationType::BakerParameters)
+        {
+            $notifyFilter   = OptionsNotifier::kNotify_Staking;
+            $notification   = Notification\Transaction\BakerParameters::I($user);
+            $thresholdScope = null;
+        }
+        else if ($notificationType == Enum\NotificationType::Origination)
+        {
+            $notifyFilter   = OptionsNotifier::kNotify_Origination;
+            $notification   = Notification\Transaction\Origination::I($user);
+            $thresholdScope = null;
+        }
+        #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # Token Receive/Send may be as: { coin | nft | undefined-token }
         else if ($notificationType == Enum\NotificationType::TokenReceive)
         {
@@ -506,6 +563,21 @@ trait AbstractBot_Notification_Events
 
             case Enum\NotificationType::TokenComment:
             case Enum\NotificationType::TokenCommentReply:
+
+            // A baker's terms and an origination carry no amount worth showing
+            case Enum\NotificationType::BakerParameters:
+            case Enum\NotificationType::Origination:
+                break;
+
+            // The delegated balance, or the tez moved in or out of a stake
+            case Enum\NotificationType::DelegationSet:
+            case Enum\NotificationType::DelegationChange:
+            case Enum\NotificationType::DelegationRemove:
+            case Enum\NotificationType::Stake:
+            case Enum\NotificationType::Unstake:
+            case Enum\NotificationType::UnstakeFinalized:
+            case Enum\NotificationType::UnstakeFinalizable:
+                list ($amountInCoins, $amountInTokenEntity) = $this->initializeAmounts($eventItem, $eventItem['price']);
                 break;
 
             default:
@@ -803,6 +875,19 @@ trait AbstractBot_Notification_Events
         }
 
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        // Account events (delegation, staking, baker parameters, origination). Every placeholder their templates
+        // use is bound here, HIDE_ME when there is nothing to say, which drops the line
+
+        if (in_array($notificationType, [
+            Enum\NotificationType::DelegationSet, Enum\NotificationType::DelegationChange, Enum\NotificationType::DelegationRemove,
+            Enum\NotificationType::Stake, Enum\NotificationType::Unstake, Enum\NotificationType::UnstakeFinalized,
+            Enum\NotificationType::UnstakeFinalizable,
+            Enum\NotificationType::BakerParameters, Enum\NotificationType::Origination]))
+        {
+            $this->bindAccountEvent($notification, $network, $eventItem, $customData ?? []);
+        }
+
+        // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         // NFT Marketplace
 
         if ($marketplace)
@@ -1004,6 +1089,128 @@ trait AbstractBot_Notification_Events
     }
 
     //==================================================================================================================
+
+    /**
+     * Binds the placeholders of the account-event templates: delegation, staking, baker parameters, origination.
+     * The sender is the counterparty (the baker, or a factory contract); names prefer the TzKT alias stored with
+     * the operation, since bakers and finalizing services are rarely in the profile cache.
+     */
+    private function bindAccountEvent(Notification $notification, AbstractNetwork $network, array $eventItem, array $customData): void
+    {
+        $sender = $eventItem['sender_address'];
+        $target = $eventItem['target_address'];
+
+        $name = function (?string $alias, ?string $address) use ($network): ?string
+        {
+            if ($alias !== null && $alias !== '')
+                return Notification::SafeText($alias);
+
+            return $address ? Notification::SafeText($network->getWalletPublicName($address)) : null;
+        };
+
+        $bindOrHide = function (string $placeholder, ?string $value) use ($notification): void
+        {
+            $notification->bind($placeholder, ($value === null || $value === '') ? Notification::HIDE_ME : $value);
+        };
+
+        $isOrigination = $eventItem['event_type'] === Enum\EventFlowType::Origination;
+
+        // The baker: the sender of every account event except an origination
+        $bindOrHide('{###BAKER_NAME###}', $isOrigination ? null : $name($customData[CustomData::kBAKER_NAME] ?? null, $sender));
+        // Explorer pages, not getAddressPublicUrl(): for a tz1 that is the default user profile, an NFT marketplace
+        // page - wrong for a baker. The default contract URL is a block explorer and works for any address.
+        $bindOrHide('{###BAKER_URL###}',  $isOrigination || !$sender ? null : $network->getContractPublicUrl($sender));
+
+        $prevBaker = $customData[CustomData::kPREV_BAKER] ?? null;
+        $bindOrHide('{###PREV_BAKER_NAME###}', $prevBaker ? $name($customData[CustomData::kPREV_BAKER_NAME] ?? null, $prevBaker) : null);
+        $bindOrHide('{###PREV_BAKER_URL###}',  $prevBaker ? $network->getContractPublicUrl($prevBaker) : null);
+
+        // Who sent it, when it was not the wallet itself: a service finalizing for the staker ("Finn"), or the
+        // factory contract a wallet deployed through
+        $operatedBy = $customData[CustomData::kOPERATED_BY] ?? ($isOrigination && $sender !== $target ? $sender : null);
+        $operatedByName = $customData[CustomData::kOPERATED_BY_NAME] ?? null;
+
+        if ($operatedBy !== null && ($operatedByName === null || $operatedByName === '') && $isOrigination)
+            $operatedByName = $network->getContractShortName($operatedBy);
+
+        $bindOrHide('{###OPERATED_BY###}', $operatedBy !== null ? $name($operatedByName, $operatedBy) : null);
+
+        // When unstaked tez can be finalized
+        $unlockTime  = $customData[CustomData::kUNLOCK_TIME] ?? null;
+        $unlockCycle = $customData[CustomData::kUNLOCK_CYCLE] ?? null;
+        $bindOrHide('{###UNLOCK###}', $unlockTime ? self::FriendlyFutureTime($unlockTime, $unlockCycle) : null);
+
+        // A baker's terms
+        $edge      = $customData[CustomData::kEDGE] ?? null;
+        $edgePrev  = $customData[CustomData::kEDGE_PREV] ?? null;
+        $limit     = $customData[CustomData::kLIMIT] ?? null;
+        $limitPrev = $customData[CustomData::kLIMIT_PREV] ?? null;
+
+        $bindOrHide('{###EDGE_CHANGE###}',  $edge !== null ? self::FriendlyChange($edge, $edgePrev, [self::class, 'FriendlyEdge']) : null);
+        $bindOrHide('{###LIMIT_CHANGE###}', $limit !== null ? self::FriendlyChange($limit, $limitPrev, [self::class, 'FriendlyLimit']) : null);
+
+        $activationCycle = $customData[CustomData::kACTIVATION_CYCLE] ?? null;
+        $activationTime  = $customData[CustomData::kACTIVATION_TIME] ?? null;
+        $bindOrHide('{###ACTIVATION###}', $activationCycle === null ? null
+            // Only a future cycle's start is an estimate (Tzkt::EstimateCycleStartTime); a past one is TzKT's own
+            : ($activationTime ? self::FriendlyFutureTime($activationTime, $activationCycle,
+                strtotime($activationTime) > Time::Time() ? 'around ' : '') : "cycle $activationCycle"));
+
+        // An originated contract
+        $contract = $customData[CustomData::kCONTRACT] ?? null;
+        $bindOrHide('{###CONTRACT###}',     $contract ? Notification::SafeText($network->getContractShortName($contract)) : null);
+        $bindOrHide('{###CONTRACT_URL###}', $contract ? $network->getContractPublicUrl($contract) : null);
+    }
+
+    /** "Nov 27, 2026, 23:46 UTC (in 2 days, cycle 1427)" */
+    private static function FriendlyFutureTime(string $isoTime, $cycle, string $prefix = ''): string
+    {
+        $seconds = strtotime($isoTime) - Time::Time();
+        $details = [];
+
+        if ($seconds > 0)
+            $details[] = 'in '.Phrase::FriendlyDuration($seconds);
+        else if ($seconds < -60)
+            $details[] = Phrase::FriendlyDuration(-$seconds).' ago';
+
+        if ($cycle !== null)
+            $details[] = "cycle $cycle";
+
+        return $prefix.Phrase::FriendlyDateTime($isoTime).($details ? ' ('.join(', ', $details).')' : '');
+    }
+
+    /** "100% → 0%", "9× (unchanged)", or the new value alone when the previous one is not known */
+    private static function FriendlyChange($value, $prev, callable $format): string
+    {
+        if ($prev === null)
+            return $format($value);
+
+        if ((int) $prev === (int) $value)
+            return $format($value).' (unchanged)';
+
+        return $format($prev).' → '.$format($value);
+    }
+
+    /** Edge of baking over staking, in billionths: the share of its stakers' rewards the baker keeps */
+    public static function FriendlyEdge($billionths): string
+    {
+        return Helper::TrimRightZerosInNumber(round(((int) $billionths) / 1e7, 2)).'%';
+    }
+
+    /** Limit of staking over baking, in millionths: how much external stake the baker accepts, per tez of its own */
+    public static function FriendlyLimit($millionths): string
+    {
+        $millionths = (int) $millionths;
+
+        if ($millionths == 0)
+            return '0× (no new stakers)';
+
+        // Bakers who mean "no limit" set absurd values; the protocol caps the effective one anyway
+        if ($millionths >= 1000 * 1000000)
+            return 'no limit set';
+
+        return Helper::TrimRightZerosInNumber(round($millionths / 1e6, 2)).'×';
+    }
 
     private function getUserProfileUrl(AbstractNetwork $network, ?Marketplace $marketplace, string $address): string
     {
