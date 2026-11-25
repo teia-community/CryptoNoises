@@ -159,12 +159,11 @@ class IpfsMedia
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-            $mediaUrl = Ipfs::ConvertUriToUrl($this->ipfsUri);
+            // Through the fetch gateway first when one is set, the public gateway after it
+            $mediaUrls = Ipfs::FetchUrls($this->ipfsUri);
 
-            if ($mediaUrl == null)
+            if (!$mediaUrls)
                 throw new Exception('Cannot generate $mediaUrl');
-
-            $mediaUrl = Ipfs::AppendUniqueTaskIdToUrl($mediaUrl, $uniqueTaskId);
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -184,10 +183,19 @@ class IpfsMedia
             //----------------------------------------------------------------------------------------------------------
             // Download file
 
-            $downloader = new Downloader($mediaUrl, $saveOriginPath, $saveOriginName);
-            $downloader->setCacheFileId($saveCachePath, $saveCacheName);
+            $saved = false;
 
-            if (!$downloader->save())
+            foreach ($mediaUrls as $mediaUrl)
+            {
+                $mediaUrl   = Ipfs::AppendUniqueTaskIdToUrl($mediaUrl, $uniqueTaskId);
+                $downloader = new Downloader($mediaUrl, $saveOriginPath, $saveOriginName);
+                $downloader->setCacheFileId($saveCachePath, $saveCacheName);
+
+                if ($saved = $downloader->save())
+                    break;
+            }
+
+            if (!$saved)
                 throw new Exception("Failed to download file: $mediaUrl");
 
             //----------------------------------------------------------------------------------------------------------

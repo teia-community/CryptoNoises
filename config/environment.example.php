@@ -119,6 +119,11 @@ return [
         // sync-tokens-metadata / sync-ipfs job notices, so prefer a gateway you run or pay for.
         'ipfs_gateway_url'                      => 'https://ipfs.io/ipfs/',
 
+        // Gateway that metadata and media are fetched through first, ipfs_gateway_url being the fallback - an IPFS
+        // node next to the workers, say. Only used to download, never stored or sent, so it may be internal: it is
+        // the one private address the downloader accepts. '' = fetch through ipfs_gateway_url.
+        'ipfs_fetch_gateway_url'                => '',
+
         // Public URL + local path where media previews are stored and served from
         'ipfs_local_base_url'                   => 'https://ipfs.example.com',
         'ipfs_local_base_path'                  => __DIR__.'/../external-ipfs',

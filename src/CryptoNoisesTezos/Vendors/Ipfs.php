@@ -19,7 +19,42 @@ class Ipfs
         return sha1($uri);
     }
 
-    public static function ConvertUriToUrl(?string $uri): ?string
+    /**
+     * The URLs to download an on-chain URI from, best first: through the fetch gateway (tezos.ipfs_fetch_gateway_url)
+     * when one is set, then the URL ConvertUriToUrl() gives. A gateway URL on chain (https://<any>/ipfs/<cid>...) is
+     * fetched through the fetch gateway too, with the original as the fallback. Never store these: see Config.
+     *
+     * @return string[] empty when the URI cannot be turned into a URL
+     */
+    public static function FetchUrls(?string $uri): array
+    {
+        $public = self::ConvertUriToUrl($uri);
+
+        if ($public === null)
+            return [];
+
+        $fetchGateway = Config::cfg()->ipfsFetchGatewayUrl;
+        $urls = [];
+
+        if ($fetchGateway !== '')
+        {
+            $path = null;
+
+            if (str_starts_with($public, Config::cfg()->ipfsGatewayUrl))
+                $path = substr($public, strlen(Config::cfg()->ipfsGatewayUrl));
+            else if (preg_match('~^https://[^/]+/ipfs/((?:Qm[1-9A-HJ-NP-Za-km-z]{44}|b[a-z2-7]{20,})(?:[/?#].*)?)$~', $public, $m))
+                $path = $m[1];
+
+            if ($path !== null && $path !== '')
+                $urls[] = $fetchGateway.$path;
+        }
+
+        $urls[] = $public;
+
+        return array_values(array_unique($urls));
+    }
+
+    public static function ConvertUriToUrl(?string $uri, ?string $gateway = null): ?string
     {
         $uri = trim((string) $uri);
 
@@ -35,7 +70,7 @@ class Ipfs
         if (preg_match('#^https://#', $uri))
             return $uri;
 
-        $gateway = Config::cfg()->ipfsGatewayUrl;
+        $gateway ??= Config::cfg()->ipfsGatewayUrl;
 
         // Case 2: bare CID
         // QmPnKG1u8iU3owL86wbtUCcZak9Q9ZaeHv19FvYttLago3

@@ -2,12 +2,15 @@
 
 namespace CryptoNoisesTezos\Core\Http;
 
+use CryptoNoisesTezos\Config;
+
 /**
  * HTTP(S) client for untrusted URLs (token metadata, media from on-chain URIs).
  *
  * - only http / https;
  * - redirects are followed manually, every hop must resolve to a public IP (no localhost, private or link-local
- *   ranges), and the resolved IP is pinned via CURLOPT_RESOLVE so DNS cannot change between check and request;
+ *   ranges) - except the configured fetch gateway's own origin - and the resolved IP is pinned via CURLOPT_RESOLVE
+ *   so DNS cannot change between check and request;
  * - response size is limited;
  * - TLS certificates are verified.
  */
@@ -91,6 +94,19 @@ final class SafeCurl
      */
     private static function ResolvePublicHost(string $url): ?string
     {
+        // The one private address allowed: the configured fetch gateway (the `ipfs` sidecar), and only its exact
+        // origin - its gateway port serves nothing but IPFS content. Its admin API, other ports and other hosts on
+        // the same network stay blocked, so an on-chain URI still cannot reach them.
+        $trusted = self::TrustedOrigin();
+
+        if ($trusted !== null && self::Origin($url) === $trusted)
+        {
+            $host = parse_url($url, PHP_URL_HOST);
+            $ip   = filter_var($host, FILTER_VALIDATE_IP) !== false ? $host : (gethostbynamel($host) ?: [null])[0];
+
+            return $ip !== null ? "$host:{$trusted['port']}:$ip" : null;
+        }
+
         $parts  = parse_url($url);
         $scheme = strtolower($parts['scheme'] ?? '');
         $host   = $parts['host'] ?? '';
@@ -109,6 +125,26 @@ final class SafeCurl
             return null;
 
         return "$host:$port:$ip";
+    }
+
+    /** scheme, host and port of tezos.ipfs_fetch_gateway_url, or null when none is set */
+    private static function TrustedOrigin(): ?array
+    {
+        $gateway = Config::cfg()->ipfsFetchGatewayUrl;
+
+        return $gateway !== '' ? self::Origin($gateway) : null;
+    }
+
+    private static function Origin(string $url): ?array
+    {
+        $parts  = parse_url($url);
+        $scheme = strtolower($parts['scheme'] ?? '');
+        $host   = strtolower($parts['host'] ?? '');
+
+        if (!in_array($scheme, ['http', 'https'], true) || $host === '')
+            return null;
+
+        return ['scheme' => $scheme, 'host' => $host, 'port' => (int) ($parts['port'] ?? ($scheme === 'https' ? 443 : 80))];
     }
 
     private static function IsPublicIp(string $ip): bool

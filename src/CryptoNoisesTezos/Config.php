@@ -105,6 +105,11 @@ class Config
 
     public string $ipfsGatewayUrl;
 
+    // Gateway that token metadata and media are FETCHED through first - the `ipfs` sidecar, say - with
+    // ipfsGatewayUrl as the fallback. Never stored or sent: URLs in data and messages keep ipfsGatewayUrl, which
+    // users' clients must be able to load. Empty = fetch through ipfsGatewayUrl.
+    public string $ipfsFetchGatewayUrl;
+
     public string $ipfsLocalBaseUrl;
     public string $ipfsLocalBasePath;
 
@@ -151,6 +156,8 @@ class Config
         // Gateway that token metadata and media are read through. The public ipfs.io gateway rate-limits hard
         // these days, which shows up as "IPFS returned empty data", so point this at a gateway you control.
         $this->ipfsGatewayUrl                       = rtrim((string) Environment::get('tezos.ipfs_gateway_url', self::kIPFS_GATEWAY_DEFAULT), '/').'/';
+        $fetchGateway                               = trim((string) Environment::get('tezos.ipfs_fetch_gateway_url', ''));
+        $this->ipfsFetchGatewayUrl                  = $fetchGateway !== '' ? rtrim($fetchGateway, '/').'/' : '';
 
         $this->ipfsLocalBaseUrl                     = (string) Environment::get('tezos.ipfs_local_base_url');
         $this->ipfsLocalBasePath                    = (string) Environment::get('tezos.ipfs_local_base_path');

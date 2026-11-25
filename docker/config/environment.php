@@ -104,6 +104,10 @@ return [
         // Gateway used to read token metadata and media
         'ipfs_gateway_url'          => $env('TEZOS_IPFS_GATEWAY_URL', 'https://ipfs.io/ipfs/'),
 
+        // Gateway that metadata and media are fetched through first (the "ipfs" profile's node: http://ipfs:8080/ipfs/),
+        // ipfs_gateway_url being the fallback. Never stored or sent, so it may be internal. '' = none.
+        'ipfs_fetch_gateway_url'    => $env('TEZOS_IPFS_FETCH_GATEWAY_URL', ''),
+
         'ipfs_local_base_url'       => $env('TEZOS_IPFS_LOCAL_BASE_URL', 'http://localhost:8082'),
         'ipfs_local_base_path'      => $env('TEZOS_IPFS_LOCAL_BASE_PATH', __DIR__.'/../external-ipfs'),
         'private_storage_base_path' => $env('TEZOS_PRIVATE_STORAGE_BASE_PATH', __DIR__.'/../external-storage'),
