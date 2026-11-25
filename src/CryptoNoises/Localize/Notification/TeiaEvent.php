@@ -8,6 +8,8 @@ use CryptoNoises\Localize\Notification;
 /** A new event on teia.art/events (TeiaEvents command). Bound in AbstractBot_Notification_Events. */
 class TeiaEvent extends Notification
 {
+    public ?bool $discord_isAllowEphemeralResponse  = false;
+
     public static function I(?User $user): self
     {
         return new self($user);

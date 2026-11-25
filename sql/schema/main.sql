@@ -519,6 +519,15 @@ CREATE TABLE IF NOT EXISTS `users` (
 
 -- Matrix users: their ids are strings (@user:server, !room:server), while users.platform_user_id and
 -- platform_channel_id are numbers, so a Matrix user's row there holds matrix_ref, the id of its row here
+-- Operator alerts sent (OpsAlerts): one row per error, digits ignored, to send each at most once an hour
+CREATE TABLE IF NOT EXISTS `ops_alerts_sent` (
+  `alert_hash` char(40) NOT NULL,
+  `ts_sent` timestamp NOT NULL DEFAULT current_timestamp(),
+  `repeats` int unsigned NOT NULL DEFAULT 0,
+  PRIMARY KEY (`alert_hash`),
+  KEY `ts_sent` (`ts_sent`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `matrix_users` (
   `matrix_ref` int unsigned NOT NULL AUTO_INCREMENT,
   `matrix_user_id` varchar(255) NOT NULL,

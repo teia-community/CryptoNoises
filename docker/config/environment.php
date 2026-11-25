@@ -74,6 +74,8 @@ return [
         'matrix' => [
             'user'                          => $env('MATRIX_USER', ''),
             'proxy_url'                     => $env('MATRIX_PROXY_URL', 'http://pantalaimon:8009'),
+            // Room id (!…:server) that errors are sent to; invite the bot. Empty = none
+            'alerts_room'                   => $env('MATRIX_ALERTS_ROOM', ''),
         ],
 
         'channel_user_ids' => [

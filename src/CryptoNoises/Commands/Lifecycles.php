@@ -35,6 +35,10 @@ class Lifecycles extends AbstractCommand
     {
         $timePoint = Time::Now(-10*60);
 
+        // This month's log tables must exist before rows move there - a platform added mid-month has none yet
+        foreach ([Config::kPLATFORM_Discord, Config::kPLATFORM_Telegram, Config::kPLATFORM_Matrix] as $platform)
+            Models\Log\EventsNotificationsLog::model()->prepareTable($platform, 0);
+
         Models\Temp_EventsFlowLockedIds::model()->begin();
         Models\Temp_EventsFlowLockedIds::model()->fixLockedIds(Config::kPLATFORM_Discord);
         Models\Temp_EventsFlowLockedIds::model()->fixLockedIds(Config::kPLATFORM_Telegram);
@@ -91,8 +95,19 @@ class Lifecycles extends AbstractCommand
             if (preg_match('/(.*)error(.+)log/i', $file) == 0)
                 continue;
 
-            $size = filesize($path.'/'.$file);
-            Debugger::Error("Found error file '$file' with size ".number_format($size));
+            // Deprecations are logged but are not errors; alert on the first real error line, if any
+            $firstError = null;
+            $handle = fopen($path.'/'.$file, 'r');
+
+            while ($handle && $firstError === null && ($line = fgets($handle)) !== false)
+                if (trim($line) !== '' && !str_contains($line, 'Deprecated (not fatal)'))
+                    $firstError = trim($line);
+
+            if ($handle)
+                fclose($handle);
+
+            if ($firstError !== null)
+                Debugger::Error("PHP error in '$file': ".mb_substr($firstError, 0, 500));
 
             $file_new = $file;
             $file_new = str_ireplace('error', 'err_'.Time::Time(), $file_new); // need remove word 'error' (any case, same as the match above)

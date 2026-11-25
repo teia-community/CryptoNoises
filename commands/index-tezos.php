@@ -25,6 +25,7 @@ $f3->route('GET /blockchain/bigmap-updates/sync-check',                         
 $f3->route('GET /blockchain/bigmap-updates/cleanup',                            'CryptoNoisesTezos\Commands\BlockchainBigmapUpdates->cleanup');
 
 $f3->route('GET /blockchain/account-operations/sync-new',                       'CryptoNoisesTezos\Commands\BlockchainAccountOperations->syncNew');
+$f3->route('GET /blockchain/account-operations/cleanup',                        'CryptoNoisesTezos\Commands\BlockchainAccountOperations->cleanup');
 $f3->route('GET /blockchain/account-operations/sync-range',                     'CryptoNoisesTezos\Commands\BlockchainAccountOperations->syncRange');
 
 $f3->route('GET /analyze/transactions/new',                                     'CryptoNoisesTezos\Commands\AnalyzeTransactions->analyzeNew');

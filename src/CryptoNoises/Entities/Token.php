@@ -103,9 +103,10 @@ class Token
         if ($amount === null)
             $amount = $this->amount;
 
-        $decimalsToShow = min($this->decimals, 8);
+        $decimals       = (int) $this->decimals;
+        $decimalsToShow = min($decimals, 8);
 
-        $amount = number_format($amount / 10**$this->decimals, $decimalsToShow);
+        $amount = number_format($amount / 10**$decimals, $decimalsToShow);
 
         return Helper::TrimRightZerosInNumber($amount).' '.$this->symbol;
     }

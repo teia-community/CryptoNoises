@@ -458,6 +458,13 @@ Under Docker that check is per container, which is why each thread gets its own 
 does the supervising instead of the `*/1 * * * * bin/discord-start` cron line.
 Logs are written to `log/<Thread>-YYYYMMDD.log`.
 
+## Operator alerts
+
+Errors and fatals - `Log::Error`/`Fatal`, command `ERROR:` lines and PHP error files (deprecations ignored) - go to a
+Matrix room (`MATRIX_ALERTS_ROOM`, invite the bot) and/or the Telegram debugger bot. Each error, digits ignored, goes
+out at most once an hour with a count of repeats, and at most 30 alerts an hour. Existing installs need the
+`ops_alerts_sent` table from `sql/schema/main.sql`.
+
 ## Teia events
 
 `bots-teia-events` (profile `bots`) polls the Teia events contract (`KT1KDXX…913o`) every 5 minutes and announces each

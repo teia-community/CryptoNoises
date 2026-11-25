@@ -55,6 +55,7 @@ return [
         'matrix' => [
             'user'                              => '',                          // @bot:example.org
             'proxy_url'                         => 'http://127.0.0.1:8009',     // pantalaimon
+            'alerts_room'                       => '',                          // errors go here (!room:server)
         ],
 
         'discord' => [

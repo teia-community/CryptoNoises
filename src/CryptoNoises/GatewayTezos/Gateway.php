@@ -11,6 +11,11 @@ class Gateway
         return \CryptoNoisesTezos\Analyzers\AnalyzeHelper::GetLastFullySyncedBlock();
     }
 
+    public static function GetLastFullyAnalyzedBlock(): ?int
+    {
+        return \CryptoNoisesTezos\Analyzers\AnalyzeHelper::GetLastFullyAnalyzedBlock();
+    }
+
     //------------------------------------------------------------------------------------------------------------------
 
     public static function GetLastTransactionsSyncedBlock(): ?int
