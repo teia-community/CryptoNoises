@@ -94,6 +94,10 @@ return [
         // Point this at a TzKT you run if you index at any scale.
         'tzkt_api_url'                          => 'https://api.tzkt.io/v1',
 
+        // Account aliases ("Finn", a baker's name) for notifications, when tzkt_api_url has none: they come from
+        // TzKT's metadata service, which a self-hosted TzKT does not run. A few requests per day. '' = no lookups.
+        'tzkt_aliases_url'                      => 'https://api.tzkt.io/v1',
+
         // IPFS gateway that token metadata and media are read through.
         // The public ipfs.io gateway rate-limits heavily, which surfaces as "IPFS returned empty data" in the
         // sync-tokens-metadata / sync-ipfs job notices, so prefer a gateway you run or pay for.

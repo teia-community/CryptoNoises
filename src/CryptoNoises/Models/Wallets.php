@@ -32,6 +32,20 @@ class Wallets extends VssModel
         return Vss::db()->queryRow($sql, ['id'=>$walletAdid]);
     }
 
+    /**
+     * Addresses of every wallet the bots watch. Used where an event concerns wallets by a relation the chain
+     * knows and this database does not - e.g. who delegates to a baker that just changed its terms.
+     *
+     * @return string[]
+     */
+    public function getActiveAddresses(): array
+    {
+        $rows = Vss::db()->query("SELECT wallet_address FROM {$this->tableName()} WHERE status = :status",
+            ['status' => self::kSTATUS_Active]);
+
+        return array_column($rows, 'wallet_address');
+    }
+
     public function freeze($walletAdid)
     {
         $sql = "UPDATE {$this->tableName()} SET status=:status WHERE wallet_adid=:wallet_adid";

@@ -33,6 +33,26 @@ class Gateway
         return \CryptoNoisesTezos\Analyzers\AnalyzeHelper::GetLastBigmapsAnalyzedBlock();
     }
 
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Account operations: delegations, staking, baker parameter changes, originations
+
+    public static function GetLastAccountOperationsSyncedBlock(): ?int
+    {
+        return Models\FixerAccountOperationsSync::model()->getLastSuccessLevelIndex();
+    }
+
+    /** Where the account-operations sync started, i.e. the first level there is anything to analyze */
+    public static function GetAccountOperationsFirstLevel(): ?int
+    {
+        return Models\FixerAccountOperationsSync::model()->getFirstLevel();
+    }
+
+    /** Applied operations of [levelFrom .. levelTo], chain order, with addresses resolved */
+    public static function GetAccountOperations(int $levelFrom, int $levelTo): array
+    {
+        return Models\AccountOperations::model()->getAppliedInRange($levelFrom, $levelTo);
+    }
+
     //------------------------------------------------------------------------------------------------------------------
 
     public static function GetTransactions(int $level): ?array

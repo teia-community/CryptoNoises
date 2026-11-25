@@ -76,7 +76,7 @@ final class BatchSyncRunner
                 continue;
             }
 
-            $range = LevelRangeLoader::Load($this->sync->tzktRangePath(), $level, $levelTo);
+            $range = LevelRangeLoader::LoadFor($this->sync, $level, $levelTo);
 
             if ($range === null)
                 throw new Exception("#$level: cannot load levels $level..$levelTo from TzKT");

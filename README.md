@@ -760,6 +760,59 @@ splits tasks by `queue_task_id % threadCnt`, which is how this used to be made s
 `/jobs/recover-dead-jobs` returns tasks stuck in `syncing` (and stuck sync blocks) back to `idle`, which is what
 recovers a worker that was killed mid-task.
 
+### 4. Account operations: delegation, staking, originations
+
+Transactions are not the only thing that happens to a wallet. Delegations, staking (stake / unstake / finalize), a
+baker changing its staking terms, and originations are separate TzKT operation kinds, and the transaction sync never
+sees them. Together they are about 0.2% of the transaction volume, so they get one plain table and one sync:
+
+| Service | Command | What it does |
+|---------|---------|--------------|
+| `stage-sync-account-ops` | `run-tezos /blockchain/account-operations/sync-new` | Four TzKT endpoints -> `account_operations`, cursor `fixer_account_operations_sync` |
+| `stage-account-events` (profile `bots`) | `run /tezos-network/analyze-account-operations/new` | Rows -> events -> notifications, cursor `TezosAccountOpsAnalyzer.LastSyncedLevel` |
+| `bots-unstake-reminders` (profile `bots`) | `run /tezos-network/unstake-reminders` | Every 10 minutes: unlocked, unfinalized unstake requests of watched wallets -> reminders |
+
+What a wallet is told, under two settings switches ("🥩 Staking & delegation", "📜 Contracts you originate"):
+
+- it started, changed or stopped delegating (with the previous baker on a change);
+- it staked, unstaked - with the time the tez can be finalized - or had an unstake finalized. A finalization is
+  routed to the **staker**, not the sender: anyone may finalize for a staker, and near the head almost every such
+  finalization comes from one service, "Finn". The message then says who did it;
+- the baker it delegates to changed what it offers stakers: the share of their rewards it keeps (edge, old -> new),
+  its staking capacity (limit), and from which cycle. Who delegates is read from TzKT at that moment;
+- it originated a contract, directly or through a factory;
+- its unstaked tez have unlocked but are still not finalized - a reminder, once per unstake request, after the
+  delay each user picks under Settings -> "⏰ Finalize reminder" (as soon as they unlock, 1, 3 or 7 days after,
+  or off; one day by default). Unlocked tez still need a finalize operation before they can be spent; most are
+  finalized within hours - often by a service that does it for stakers - and the reminder is for those left
+  unlocked for longer. TzKT reports these as `pending` with `unlockLevel` at or below the head; its `finalizable`
+  status is asked for too, and has been empty. The unlock filter is applied by the job itself: TzKT silently
+  ignores `unlockLevel.le` and `status.in` and would return requests that are still locked.
+
+Two details worth knowing:
+
+- **The analyzer never runs ahead of the indexer.** The account sync is cheap and can be years ahead on a stack
+  syncing from block 1; its analyzer stops at the level everything else has fully synced, so these notifications
+  stay in step with all the others instead of announcing this year's staking while the rest is still in 2021.
+- **Names.** Messages name bakers and services by their TzKT aliases (a baker's name, "Finn"). TzKT puts them on its
+  operations, but a self-hosted TzKT runs no metadata service and returns none, so the few addresses a message
+  names are looked up at `TEZOS_TZKT_ALIASES_URL` (the public API by default; empty = show short addresses).
+
+Existing installs need the schema (the data files only run on a fresh database). The new cursors seed themselves:
+the sync starts where the transaction sync stands, the analyzer where the sync started.
+
+```sql
+-- cryptonoises_tezos: account_operations and fixer_account_operations_sync, from sql/schema/tezos.sql
+-- cryptonoises:
+ALTER TABLE options_notifier
+    ADD COLUMN notify_staking enum('yes','no') DEFAULT NULL AFTER notify_token_comment,
+    ADD COLUMN notify_origination enum('yes','no') DEFAULT NULL AFTER notify_staking,
+    ADD COLUMN finalize_reminder_sec int DEFAULT NULL AFTER threshold_offer;
+```
+
+`notify_token_comment` must exist first; it came with the comment notifications, and an install that never added
+it fails only when someone toggles that switch.
+
 ### Where the progress is stored
 
 In table and method names "fix" means "record": `fixer_*` tables and `fix*()` methods record progress, they do not

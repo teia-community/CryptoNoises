@@ -5,6 +5,50 @@
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;   -- tables are in alphabetical order, foreign keys are checked at the end
 
+-- Account-level operations that are not transactions: delegations, staking (stake / unstake / finalize), bakers
+-- changing their staking parameters, and originations. Together they are ~0.2% of the transaction volume (174 vs
+-- 75,119 per 10k levels near the head), so one plain table holds them, without the sharding the transaction log
+-- needs. `id` is TzKT's operation id, unique across operation kinds.
+CREATE TABLE IF NOT EXISTS `account_operations` (
+  `id` bigint unsigned NOT NULL,
+  `type` enum('delegation','staking','set_delegate_parameters','origination') NOT NULL,
+  `level` int unsigned NOT NULL,
+  `timestamp` timestamp NOT NULL,
+  `hash` varchar(64) NOT NULL DEFAULT '',
+  `counter` int unsigned NOT NULL DEFAULT 0,
+  `status` varchar(16) NOT NULL DEFAULT 'applied',
+  -- who signed it
+  `sender_adid` int unsigned NOT NULL,
+  -- whose operation it is: the delegator, the staker (not always the sender: anyone may finalize for a staker),
+  -- the baker changing its parameters, or whoever originated (the initiator when a contract did it for them)
+  `account_adid` int unsigned NOT NULL,
+  -- delegation: the new delegate (NULL = undelegated); staking: the baker; set_delegate_parameters: the baker
+  `baker_adid` int unsigned DEFAULT NULL,
+  -- delegation only: the previous delegate
+  `prev_baker_adid` int unsigned DEFAULT NULL,
+  -- origination only: the originated contract
+  `contract_adid` int unsigned DEFAULT NULL,
+  -- staking only: stake | unstake | finalize
+  `action` varchar(16) DEFAULT NULL,
+  -- mutez. delegation: the delegated balance; staking: the amount moved; origination: the initial balance
+  `amount` bigint NOT NULL DEFAULT 0,
+  `requested_amount` bigint DEFAULT NULL,
+  -- set_delegate_parameters only, in the protocol's fixed-point units:
+  -- limit in millionths (5000000 = 5x the baker's own stake), edge in billionths (150000000 = 15%)
+  `limit_of_staking_over_baking` bigint unsigned DEFAULT NULL,
+  `edge_of_baking_over_staking` bigint unsigned DEFAULT NULL,
+  `activation_cycle` int unsigned DEFAULT NULL,
+  -- TzKT aliases of the counterparties as of the operation ("Finn", a baker's name). Notifications name these,
+  -- and bakers or a finalizing service are never queued for the profile sync, so the profile cache rarely has them
+  `sender_alias` varchar(255) DEFAULT NULL,
+  `baker_alias` varchar(255) DEFAULT NULL,
+  `prev_baker_alias` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `level` (`level`),
+  KEY `account` (`account_adid`,`level`),
+  KEY `baker` (`baker_adid`,`level`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `address` (
   `adid` int unsigned NOT NULL AUTO_INCREMENT,
   `address_type` enum('wallet','contract','fake') DEFAULT NULL,
@@ -299,6 +343,19 @@ CREATE TABLE IF NOT EXISTS `events_token_updates` (
   `ts_event` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`event_id`),
   UNIQUE KEY `token` (`contract_adid`,`token_unid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Cursor of `run-tezos /blockchain/account-operations/sync-new` (account_operations), same shape as the others
+CREATE TABLE IF NOT EXISTS `fixer_account_operations_sync` (
+  `level` int unsigned NOT NULL,
+  `state` enum('idle','processing','success','error') NOT NULL DEFAULT 'idle',
+  `items_count` int unsigned DEFAULT NULL,
+  `notice` text DEFAULT NULL,
+  `ts_scan_started` timestamp NULL DEFAULT current_timestamp(),
+  `ts_scan_finished` timestamp NULL DEFAULT NULL,
+  `items_count_prev` int unsigned DEFAULT NULL,
+  PRIMARY KEY (`level`),
+  KEY `state` (`state`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `fixer_bigmap_updates_analyze` (

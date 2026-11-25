@@ -84,6 +84,9 @@ return [
         // TzKT API base URL, no trailing slash. The public one rate-limits; see the README.
         'tzkt_api_url'              => $env('TEZOS_TZKT_API_URL', 'https://api.tzkt.io/v1'),
 
+        // TzKT that account aliases are read from when tzkt_api_url has none (a self-hosted TzKT has none)
+        'tzkt_aliases_url'          => $env('TEZOS_TZKT_ALIASES_URL', 'https://api.tzkt.io/v1'),
+
         // Gateway used to read token metadata and media
         'ipfs_gateway_url'          => $env('TEZOS_IPFS_GATEWAY_URL', 'https://ipfs.io/ipfs/'),
 

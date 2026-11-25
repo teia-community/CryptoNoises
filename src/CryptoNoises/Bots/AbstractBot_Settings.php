@@ -36,6 +36,11 @@ trait AbstractBot_Settings
                 $this->doOptionsNotifier_FilterThresholds($notification, $user->options(), $callbackAction, $caBuilder);
                 break;
 
+            case 'finalize-reminder':
+            case 'finalize-reminder.set':
+                $notification = $this->doSettings_FinalizeReminder($user, $callbackAction, $caBuilder);
+                break;
+
             default:
                 $notification = null;
                 break;
@@ -61,6 +66,10 @@ trait AbstractBot_Settings
             $buttons[] = NotificationButton::CallbackAction(Phrase::I()->filterThresholds,
                 $caBuilder->newEventAuid('thresholds'));
 
+            $buttons[] = NotificationButton::CallbackAction(Phrase::I()->finalizeReminder.': '
+                .Phrase::FinalizeReminder($options->getFinalizeReminderSec()),
+                $caBuilder->newEventAuid('finalize-reminder'));
+
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
             if (Config::cfg()->isTelegramPlatform())
@@ -72,6 +81,46 @@ trait AbstractBot_Settings
                 $notification->appendButtonsAsRows($buttons, 5);
             }
         }
+
+        return $notification;
+    }
+
+    /**
+     * The choices for the finalize reminder, the current one marked; a click saves it. A user-level setting: the
+     * reminder is about the user's own patience, not about one wallet.
+     */
+    private function doSettings_FinalizeReminder(User $user, CallbackAction $callbackAction, CallbackAction $caBuilder): Notification
+    {
+        $notification = Notification\Settings\FinalizeReminder::I($user);
+        $options      = $user->options();
+        $values       = \CryptoNoises\Entities\OptionsNotifier::GetFinalizeReminderValues();
+
+        if ($callbackAction->event == 'finalize-reminder.set')
+        {
+            $key = $callbackAction->data['value'] ?? null;
+
+            if (isset($values[$key]))
+                $options->setFinalizeReminderSec($values[$key]);
+        }
+
+        $current = $options->getFinalizeReminderSec();
+        $buttons = [];
+
+        foreach ($values as $key => $seconds)
+        {
+            $title = Phrase::FinalizeReminder($seconds);
+
+            if ($seconds === $current)
+                $title = Phrase::WithIcon('✅', $title);
+
+            $buttons[] = NotificationButton::CallbackAction($title, $caBuilder->newEventAuid('finalize-reminder.set', ['value' => $key]));
+        }
+
+        $notification->appendButtonsAsRows($buttons, 1);
+
+        $notification->appendButtonsRow([
+            NotificationButton::CallbackAction(Phrase::I()->actionBack, $caBuilder->newEventAuid()),
+        ]);
 
         return $notification;
     }

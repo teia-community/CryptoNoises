@@ -23,6 +23,70 @@ final class LevelRangeLoader
 
     public int $itemsCount = 0;
 
+    /**
+     * Loads the range for a sync, through every endpoint it reads.
+     */
+    public static function LoadFor(LevelSyncInterface $sync, int $levelFrom, int $levelTo): ?self
+    {
+        if ($sync instanceof MultiPathLevelSyncInterface)
+            return self::LoadMany($sync->tzktRangePaths(), $levelFrom, $levelTo);
+
+        return self::Load($sync->tzktRangePath(), $levelFrom, $levelTo);
+    }
+
+    /**
+     * Loads several endpoints for the same range and merges their items by level, in chain order (TzKT operation
+     * ids are global across operation kinds). Every item gets the key of its endpoint in `__kind`.
+     *
+     * Each endpoint may end early when a page fills up. The merged range ends at the earliest of those ends and
+     * drops the levels after it, so a level is never returned with the items of only some endpoints - the cursor
+     * would step over the missing ones for good.
+     *
+     * @param array<string, string> $tzktPaths key => TzKT list endpoint
+     */
+    public static function LoadMany(array $tzktPaths, int $levelFrom, int $levelTo): ?self
+    {
+        $merged = new self();
+        $merged->levelTo = $levelTo;
+
+        $loaded = [];
+
+        foreach ($tzktPaths as $kind => $path)
+        {
+            $range = self::Load($path, $levelFrom, $levelTo);
+
+            if ($range === null)
+                return null;
+
+            $loaded[$kind] = $range;
+            $merged->levelTo = min($merged->levelTo, $range->levelTo);
+        }
+
+        foreach ($loaded as $kind => $range)
+            foreach ($range->itemsByLevel as $level => $items)
+            {
+                if ($level > $merged->levelTo)
+                    continue;
+
+                foreach ($items as $item)
+                {
+                    $item['__kind'] = $kind;
+                    $merged->itemsByLevel[$level][] = $item;
+                }
+            }
+
+        ksort($merged->itemsByLevel);
+
+        foreach ($merged->itemsByLevel as $level => $items)
+        {
+            usort($items, fn (array $a, array $b) => $a['id'] <=> $b['id']);
+            $merged->itemsByLevel[$level] = $items;
+            $merged->itemsCount += count($items);
+        }
+
+        return $merged;
+    }
+
     public static function Load(string $tzktPath, int $levelFrom, int $levelTo): ?self
     {
         $range = new self();
