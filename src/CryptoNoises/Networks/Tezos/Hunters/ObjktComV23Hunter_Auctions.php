@@ -410,7 +410,11 @@ class ObjktComV23Hunter_Auctions extends ObjktComV23Hunter
 
         foreach ($records as $key => $record)
         {
-            $value0 = $record['parameter']['value'][0];
+            // Only a token transfer has a list here: the bid payouts and fees of the same operation do not
+            $value0 = $record['parameter']['value'][0] ?? null;
+
+            if (!is_array($value0))
+                continue;
 
             if (isset($value0['address']) && $value0['address'] == $this->kEnglishAuctionsKTID &&
                 isset($value0['list'][0]['token_id']))
@@ -445,7 +449,11 @@ class ObjktComV23Hunter_Auctions extends ObjktComV23Hunter
 
         foreach ($records as $key => $record)
         {
-            $value0 = $record['parameter']['value'][0];
+            // Only a token transfer has a list here: the bid payouts and fees of the same operation do not
+            $value0 = $record['parameter']['value'][0] ?? null;
+
+            if (!is_array($value0))
+                continue;
 
             if (isset($value0['from_']) && $value0['from_'] == $this->kEnglishAuctionsKTID &&
                 isset($value0['txs'][0]['token_id']))
