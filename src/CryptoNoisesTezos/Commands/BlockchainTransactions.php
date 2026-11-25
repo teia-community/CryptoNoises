@@ -63,6 +63,32 @@ class BlockchainTransactions extends AbstractCommand
         }
     }
 
+    // A wallet-events stage that has not finished a level for this long is taken as switched off, so that it does not
+    // hold the raw log back for good
+    const kWALLET_EVENTS_STALE_SEC = 7 * 86400;
+
+    /**
+     * The last level the bots' wallet-events stage (/tezos-network/analyze-transactions/new) finished, while it is in
+     * use: null when the bots were never started (no row) or it has not finished a level for kWALLET_EVENTS_STALE_SEC.
+     */
+    private static function WalletEventsLevel(): ?int
+    {
+        try
+        {
+            $row = \CryptoCore\Vss\Vss::db()->queryRow("SELECT level, ts_scan_finished FROM fixer_tezos_transactions_analyze
+                WHERE state = 'success' ORDER BY level DESC LIMIT 1");
+        }
+        catch (\Throwable $e)
+        {
+            return null;    // no bots database here
+        }
+
+        if (empty($row) || strtotime((string) $row['ts_scan_finished']) < time() - self::kWALLET_EVENTS_STALE_SEC)
+            return null;
+
+        return (int) $row['level'];
+    }
+
     public function cleanup(): void
     {
         $offset = (int) $this->getCmdVar('offset', Config::kLOG_CLEANUP_DEFAULT_OFFSET);
@@ -80,7 +106,20 @@ class BlockchainTransactions extends AbstractCommand
         if ($syncedLevel === null || $analyzedLevel === null)
             return;
 
-        $dropped = Models\Log\Transactions::model()->removeTablesBefore(min($syncedLevel, (int) $analyzedLevel) - $offset);
+        $keepFrom = min($syncedLevel, (int) $analyzedLevel);
+
+        // The bots' wallet-events stage reads these tables too, and runs behind the indexer while it catches up or
+        // after it was down. Without waiting for it, a stage more than $offset levels behind lost the tables it had
+        // not read yet, and analyzed those levels as empty: no error, just missed notifications.
+        $eventsLevel = self::WalletEventsLevel();
+
+        if ($eventsLevel !== null && $eventsLevel < $keepFrom)
+        {
+            $keepFrom = $eventsLevel;
+            $this->logMsg("Keeping tables from level $eventsLevel for the wallet-events stage");
+        }
+
+        $dropped = Models\Log\Transactions::model()->removeTablesBefore($keepFrom - $offset);
 
         if (!empty($dropped))
             $this->logMsg('Dropped: '.join(', ', $dropped));
