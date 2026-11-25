@@ -41,6 +41,11 @@ trait AbstractBot_Settings
                 $notification = $this->doSettings_FinalizeReminder($user, $callbackAction, $caBuilder);
                 break;
 
+            case 'missed-attestations':
+            case 'missed-attestations.set':
+                $notification = $this->doSettings_MissedAttestations($user, $callbackAction, $caBuilder);
+                break;
+
             default:
                 $notification = null;
                 break;
@@ -69,6 +74,10 @@ trait AbstractBot_Settings
             $buttons[] = NotificationButton::CallbackAction(Phrase::I()->finalizeReminder.': '
                 .Phrase::FinalizeReminder($options->getFinalizeReminderSec()),
                 $caBuilder->newEventAuid('finalize-reminder'));
+
+            $buttons[] = NotificationButton::CallbackAction(Phrase::I()->missedAttestations.': '
+                .Phrase::MissedAttestations($options->getMissedAttestationsAlert()),
+                $caBuilder->newEventAuid('missed-attestations'));
 
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -114,6 +123,45 @@ trait AbstractBot_Settings
                 $title = Phrase::WithIcon('✅', $title);
 
             $buttons[] = NotificationButton::CallbackAction($title, $caBuilder->newEventAuid('finalize-reminder.set', ['value' => $key]));
+        }
+
+        $notification->appendButtonsAsRows($buttons, 1);
+
+        $notification->appendButtonsRow([
+            NotificationButton::CallbackAction(Phrase::I()->actionBack, $caBuilder->newEventAuid()),
+        ]);
+
+        return $notification;
+    }
+
+    /**
+     * For bakers: how many missed attestations within an hour make an alert. User-level, like the finalize reminder.
+     */
+    private function doSettings_MissedAttestations(User $user, CallbackAction $callbackAction, CallbackAction $caBuilder): Notification
+    {
+        $notification = Notification\Settings\MissedAttestations::I($user);
+        $options      = $user->options();
+        $values       = \CryptoNoises\Entities\OptionsNotifier::GetMissedAttestationsValues();
+
+        if ($callbackAction->event == 'missed-attestations.set')
+        {
+            $key = $callbackAction->data['value'] ?? null;
+
+            if (isset($values[$key]))
+                $options->setMissedAttestationsAlert($values[$key]);
+        }
+
+        $current = $options->getMissedAttestationsAlert();
+        $buttons = [];
+
+        foreach ($values as $key => $count)
+        {
+            $title = Phrase::MissedAttestations($count);
+
+            if ($count === $current)
+                $title = Phrase::WithIcon('✅', $title);
+
+            $buttons[] = NotificationButton::CallbackAction($title, $caBuilder->newEventAuid('missed-attestations.set', ['value' => $key]));
         }
 
         $notification->appendButtonsAsRows($buttons, 1);

@@ -103,6 +103,10 @@ return [
         // A few requests per day. '' = no lookups.
         'tzkt_aliases_url'                      => 'https://api.tzkt.io/v1',
 
+        // A Tezos node's RPC, for bakers' DAL participation (one request per watched baker every ten minutes).
+        // '' = no DAL alerts.
+        'rpc_url'                               => 'https://rpc.tzkt.io/mainnet',
+
         // IPFS gateway that token metadata and media are read through.
         // The public ipfs.io gateway rate-limits heavily, which surfaces as "IPFS returned empty data" in the
         // sync-tokens-metadata / sync-ipfs job notices, so prefer a gateway you run or pay for.

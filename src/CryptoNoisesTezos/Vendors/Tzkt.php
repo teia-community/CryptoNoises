@@ -238,6 +238,116 @@ class Tzkt extends AbstractVendor
         return $result->isSuccess() && isset($result->data[0]) && is_array($result->data[0]) ? $result->data[0] : null;
     }
 
+    //------------------------------------------------------------------------------------------------------------------
+    // Baking and governance. Filters below were each checked against an impossible value: TzKT silently ignores
+    // address.in on /delegates and firstPeriod on /voting/proposals, so neither is used.
+
+    /**
+     * Which of $addresses are bakers. @return string[]|null null when TzKT did not answer
+     */
+    public static function GetBakersAmong(array $addresses): ?array
+    {
+        $found = [];
+
+        foreach (array_chunk(array_values(array_unique($addresses)), 100) as $chunk)
+        {
+            $result = self::GetDataJson(self::api()."/accounts?address.in=".join(',', $chunk)."&type=delegate&select=address&limit=".count($chunk));
+
+            if (!$result->isSuccess() || !is_array($result->data))
+                return null;
+
+            $found = array_merge($found, $result->data);
+        }
+
+        return $found;
+    }
+
+    /**
+     * Missed baking and attestation rights of $bakers in levels ($after .. $upto], oldest first, at most
+     * kMAX_ITEMS_PER_REQUEST per chunk of bakers. @return array[]|null type, level, slots, baker address
+     */
+    public static function GetMissedRights(array $bakers, int $after, int $upto): ?array
+    {
+        $rights = [];
+
+        // 4 bakers per request: a fully offline baker misses ~1 attestation a block, so even a window of a couple of
+        // thousand levels stays under the page size for four of them (BakerAlerts asks for an hour: ~600 at 6 s blocks)
+        foreach (array_chunk(array_values(array_unique($bakers)), 4) as $chunk)
+        {
+            $result = self::GetDataJson(self::api()."/rights?baker.in=".join(',', $chunk)."&status=missed"
+                ."&level.gt=$after&level.le=$upto&sort.asc=level&limit=".self::kMAX_ITEMS_PER_REQUEST);
+
+            if (!$result->isSuccess() || !is_array($result->data))
+                return null;
+
+            foreach ($result->data as $right)
+                $rights[] = [
+                    'type'  => $right['type'] ?? null,
+                    'level' => (int) ($right['level'] ?? 0),
+                    'slots' => (int) ($right['slots'] ?? 0),
+                    'baker' => $right['baker']['address'] ?? null,
+                ];
+        }
+
+        return $rights;
+    }
+
+    /** The level of the last block at or before a unix time. Null when TzKT did not answer. */
+    public static function GetLevelAt(int $time): ?int
+    {
+        $result = self::GetDataJson(self::api()."/blocks/".gmdate('Y-m-d\TH:i:s\Z', $time)."/level");
+
+        return $result->isSuccess() && is_numeric($result->data) ? (int) $result->data : null;
+    }
+
+    /** The head block: level, cycle, timestamp... Null when TzKT did not answer. */
+    public static function GetHead(): ?array
+    {
+        $result = self::GetDataJson(self::api()."/head");
+
+        return $result->isSuccess() && isset($result->data['level'], $result->data['cycle']) ? $result->data : null;
+    }
+
+    public static function GetCurrentVotingPeriod(): ?array
+    {
+        $result = self::GetDataJson(self::api()."/voting/periods/current");
+
+        return $result->isSuccess() && !empty($result->data['index']) ? $result->data : null;
+    }
+
+    /**
+     * The latest proposals, newest first; callers pick the ones of a period themselves.
+     */
+    public static function GetRecentProposals(int $limit = 30): ?array
+    {
+        $result = self::GetDataJson(self::api()."/voting/proposals?sort.desc=id&limit=$limit");
+
+        return $result->isSuccess() && is_array($result->data) ? $result->data : null;
+    }
+
+    /**
+     * Every voter of a period with its vote: none, upvoted, voted_yay, voted_nay, voted_pass. A baker missing from
+     * the list is not a voter in that period. One request for all bakers: the voters endpoint ignores a `delegate`
+     * filter, and the single-voter endpoint answers a non-voter with 204, which the HTTP layer retries as a failure.
+     *
+     * @return array<string, string>|null address => status; null when TzKT did not answer
+     */
+    public static function GetVoters(int $period): ?array
+    {
+        $result = self::GetDataJson(self::api()."/voting/periods/$period/voters?limit=10000");
+
+        if (!$result->isSuccess() || !is_array($result->data))
+            return null;
+
+        $voters = [];
+
+        foreach ($result->data as $voter)
+            if (isset($voter['delegate']['address']))
+                $voters[$voter['delegate']['address']] = (string) ($voter['status'] ?? '');
+
+        return $voters;
+    }
+
     /** @var array<string, ?string> address => alias (null = none, or the lookup failed), per process */
     private static array $aliasCache = [];
 

@@ -89,6 +89,9 @@ class Config
     // TzKT does not run. Empty = no lookups.
     public string $tzktAliasesUrl;
 
+    // A Tezos node's RPC, for what only the protocol knows (a baker's DAL participation). Empty = not used.
+    public string $tezosRpcUrl;
+
     public string $ipfsGatewayUrl;
 
     public string $ipfsLocalBaseUrl;
@@ -128,6 +131,7 @@ class Config
         // hit that limit, so point this at a TzKT you control (see Vendors/Tzkt.php).
         $this->tzktApiUrl                           = rtrim((string) Environment::get('tezos.tzkt_api_url', self::kTZKT_API_DEFAULT), '/');
         $this->tzktAliasesUrl                       = rtrim((string) Environment::get('tezos.tzkt_aliases_url', self::kTZKT_API_DEFAULT), '/');
+        $this->tezosRpcUrl                          = rtrim((string) Environment::get('tezos.rpc_url', 'https://rpc.tzkt.io/mainnet'), '/');
 
         // Gateway that token metadata and media are read through. The public ipfs.io gateway rate-limits hard
         // these days, which shows up as "IPFS returned empty data", so point this at a gateway you control.

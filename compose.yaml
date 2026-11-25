@@ -268,6 +268,13 @@ services:
     command: ["/opt/cryptonoises/commands/run", "/tezos-network/unstake-reminders"]
     profiles: ["bots"]
 
+  # For watched wallets that are bakers: missed attestations / blocks, governance periods, proposals, vote reminders.
+  # Reads TzKT's current state, not history, so it is safe on a stand that is still catching up.
+  bots-baker-alerts:
+    <<: *worker
+    command: ["/opt/cryptonoises/commands/run", "/tezos-network/baker-alerts"]
+    profiles: ["bots"]
+
   bots-wallets-sync:
     <<: *worker
     command: ["/opt/cryptonoises/commands/run", "/tezos-network/wallets/sync"]

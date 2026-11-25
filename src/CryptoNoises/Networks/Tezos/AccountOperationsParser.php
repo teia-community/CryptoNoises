@@ -102,6 +102,18 @@ class AccountOperationsParser
         ], fn ($v) => $v !== null);
 
         $this->events[] = $event;
+
+        // The bakers' side: one gained a delegator, the other lost one. A baker registering (delegating to itself)
+        // is not a delegator.
+        $delegator = $row['account_address'];
+
+        if ($baker !== null && $baker !== $delegator)
+            $this->pushBakerSide($row, Enum\EventFlowType::BakerDelegator, 'joined', $baker, self::kSUBID_BakerJoined,
+                $prevBaker !== null ? [CustomData::kPREV_BAKER => $prevBaker, CustomData::kPREV_BAKER_NAME => self::Name($row['prev_baker_alias'], $prevBaker)] : []);
+
+        if ($prevBaker !== null && $prevBaker !== $delegator)
+            $this->pushBakerSide($row, Enum\EventFlowType::BakerDelegator, 'left', $prevBaker, self::kSUBID_BakerLeft,
+                $baker !== null ? [CustomData::kPREV_BAKER => $baker, CustomData::kPREV_BAKER_NAME => self::Name($row['baker_alias'], $baker)] : []);
     }
 
     private function analyzeStaking(array $row): void
@@ -139,6 +151,35 @@ class AccountOperationsParser
         }
 
         $event->custom_data = array_filter($custom, fn ($v) => $v !== null);
+
+        $this->events[] = $event;
+
+        // The baker's side of someone else staking or unstaking with it. Finalizing only moves tez that already
+        // left the stake, so it is not news for the baker; nor is a baker staking its own tez.
+        if (in_array($row['action'], [AccountOperations::kACTION_Stake, AccountOperations::kACTION_Unstake])
+            && $row['baker_address'] !== null && $row['baker_address'] !== $row['account_address'])
+        {
+            $this->pushBakerSide($row, Enum\EventFlowType::BakerStaker, $row['action'], $row['baker_address'], self::kSUBID_BakerJoined, []);
+        }
+    }
+
+    // Sub-ids of the bakers' events. EventsFlow::insert() recognises an event by operation id and sub-id alone, not
+    // by type, so these must differ from the wallet's own event (sub-id 0) or they are taken for it and dropped.
+    const kSUBID_BakerJoined    = 1;
+    const kSUBID_BakerLeft      = 2;
+
+    /**
+     * An event for the baker about one of its delegators or stakers: target = the baker, sender = the delegator.
+     */
+    private function pushBakerSide(array $row, string $type, string $details, string $baker, int $subId, array $custom): void
+    {
+        $event = $this->newEvent($row, $type, $subId);
+
+        $event->event_details  = $details;
+        $event->target_address = $baker;
+        $event->sender_address = $row['account_address'];
+        $event->price          = (float) $row['amount'];
+        $event->custom_data    = array_filter($custom, fn ($v) => $v !== null) ?: null;
 
         $this->events[] = $event;
     }

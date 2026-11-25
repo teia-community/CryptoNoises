@@ -714,6 +714,53 @@ class EventFlow
             $this->pushEventNotificationByOwnerAdid($targetAdid, $targetAddress, $eventFlowId, NotificationType::Origination);
         }
 
+        //===[ BAKER EVENTS ]===========================================================================================
+
+        // A delegator or staker of a watched baker: target_address is the baker
+        else if ($this->event_type == Enum\EventFlowType::BakerDelegator || $this->event_type == Enum\EventFlowType::BakerStaker)
+        {
+            $notificationType = match ($this->event_details) {
+                'joined'  => NotificationType::BakerDelegatorJoined,
+                'left'    => NotificationType::BakerDelegatorLeft,
+                'stake'   => NotificationType::BakerStakerStake,
+                'unstake' => NotificationType::BakerStakerUnstake,
+                default   => null,
+            };
+
+            if ($notificationType !== null)
+                $this->pushEventNotificationByOwnerAdid($targetAdid, $targetAddress, $eventFlowId, $notificationType);
+        }
+
+        // BakerAlerts addresses each of these to one user, about one of their watched bakers
+        else if ($this->event_type == Enum\EventFlowType::BakerMissedRights)
+        {
+            $this->pushEventNotificationForUserIdsAsOwner($this->userIds, $targetAdid, $targetAddress, $eventFlowId, NotificationType::BakerMissedRights);
+        }
+        else if ($this->event_type == Enum\EventFlowType::BakerDal)
+        {
+            $notificationType = match ($this->event_details) {
+                'insufficient' => NotificationType::BakerDalInsufficient,
+                'recovered'    => NotificationType::BakerDalRecovered,
+                'denounced'    => NotificationType::BakerDalDenounced,
+                default        => null,
+            };
+
+            if ($notificationType !== null)
+                $this->pushEventNotificationForUserIdsAsOwner($this->userIds, $targetAdid, $targetAddress, $eventFlowId, $notificationType);
+        }
+        else if ($this->event_type == Enum\EventFlowType::Governance)
+        {
+            $notificationType = match ($this->event_details) {
+                'period'        => NotificationType::GovernancePeriod,
+                'proposal'      => NotificationType::GovernanceProposal,
+                'vote-reminder' => NotificationType::GovernanceVoteReminder,
+                default         => null,
+            };
+
+            if ($notificationType !== null)
+                $this->pushEventNotificationForUserIdsAsOwner($this->userIds, $targetAdid, $targetAddress, $eventFlowId, $notificationType);
+        }
+
         // A reminder is per user - each chooses their own delay - but it is about one of their wallets, so it goes
         // out as that wallet's notification (its name and balance, its settings) to that user only
         else if ($this->event_type == Enum\EventFlowType::UnstakeFinalizable)
