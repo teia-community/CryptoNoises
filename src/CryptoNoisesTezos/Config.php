@@ -84,8 +84,9 @@ class Config
 
     public string $tzktApiUrl;
 
-    // Where account aliases ("Finn", a baker's name) are looked up when the data from tzktApiUrl has none. Aliases
-    // come from TzKT's metadata service, which a self-hosted TzKT does not run. Empty = no lookups.
+    // Where account aliases ("Finn", a baker's name) and contract metadata (e.g. the ALEATORY-001 interface) are
+    // looked up when the data from tzktApiUrl has none: both come from TzKT's metadata service, which a self-hosted
+    // TzKT does not run. Empty = no lookups.
     public string $tzktAliasesUrl;
 
     public string $ipfsGatewayUrl;

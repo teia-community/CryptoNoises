@@ -66,6 +66,7 @@ class Phrase
     public string $filterTypeTokenComment              = '💬 Comments on your tokens';
     public string $filterTypeStaking                   = '🥩 Staking & delegation';
     public string $filterTypeOrigination               = '📜 Contracts you originate';
+    public string $filterTypeMessages                  = '💬 Messages to you';
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 

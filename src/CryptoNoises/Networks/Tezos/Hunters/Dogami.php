@@ -7,6 +7,9 @@ abstract class Dogami extends AbstractHunter
     public const kTokensKTID                        = 'KT1NVvPsNDChrLRH5K2cy6Sc9r1uuUwdiZQd';
 
     public const kMarketplaceKTID                   = 'KT1QcZ81mxhYutPCA7WeVAd7Ko1etWJBuRqQ';
+    // Same NFT contract, same reserve wallet and the same call shapes as v1 (plus `token_origin` and `to_`).
+    // Its offer entrypoints were never used.
+    public const kMarketplaceV2KTID                 = 'KT1HnV6WJFLksLaLZRLck1TX4SbbcTXULX9t';
     public const kDogaKTID                          = 'KT1Ha4yFVeyzw6KRAdkzq6TxDHB97KG4pZe8';
 
     public const kAuctionKTID                       = 'KT1NVXxerB7NFi12CGP79fwoLHhuaxPBV2tQ';
@@ -21,7 +24,7 @@ abstract class Dogami extends AbstractHunter
 
     public static function GetAllMarketContracts(): array
     {
-        return [self::kMarketplaceKTID, self::kDogaKTID, self::kAuctionKTID];
+        return [self::kMarketplaceKTID, self::kMarketplaceV2KTID, self::kDogaKTID, self::kAuctionKTID];
     }
 
     public static function GetMarketplaceContractByTokenContract(string $tokensContract): ?string

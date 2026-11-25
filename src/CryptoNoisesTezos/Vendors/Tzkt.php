@@ -189,6 +189,55 @@ class Tzkt extends AbstractVendor
         return $found;
     }
 
+    /**
+     * The interfaces a contract declares in its TZIP-16 metadata (e.g. "TZIP-012", "ALEATORY-001"), or null when
+     * that is not known.
+     *
+     * Read from tezos.tzkt_aliases_url, not the main TzKT: contract metadata, like aliases, comes from TzKT's
+     * metadata service, which a self-hosted TzKT does not run - it answers with no metadata at all. A contract
+     * without metadata therefore also gives null (unknown), never an empty list that a caller would cache as "no".
+     * The whole account is fetched: metadata is not selectable from the list endpoints (they answer an empty list),
+     * and /contracts/{address} ignores select anyway. Callers cache the answer.
+     */
+    public static function GetContractInterfaces(string $contract): ?array
+    {
+        $base = Config::cfg()->tzktAliasesUrl;
+
+        if ($base === '')
+            return null;
+
+        $result = self::GetDataJson("$base/contracts/$contract");
+
+        if (!$result->isSuccess() || !is_array($result->data) || empty($result->data['metadata']))
+            return null;
+
+        $interfaces = $result->data['metadata']['interfaces'] ?? [];
+
+        return is_array($interfaces) ? $interfaces : [];
+    }
+
+    /**
+     * Payload of the event `$tag` that the transaction with TzKT id $transactionId emitted from $contract, or null.
+     */
+    public static function GetEventPayload(string $contract, string $tag, int $transactionId): ?array
+    {
+        $result = self::GetDataJson(self::api()."/contracts/events?contract=$contract&tag=$tag&transactionId=$transactionId"
+            ."&select=payload&limit=1");
+
+        return $result->isSuccess() && isset($result->data[0]) && is_array($result->data[0]) ? $result->data[0] : null;
+    }
+
+    /**
+     * Current value of one bigmap key, or null when the key does not exist or TzKT did not answer. Core data, so any
+     * TzKT serves it, a self-hosted one included.
+     */
+    public static function GetBigmapKeyValue(int $bigmap, string $key): ?array
+    {
+        $result = self::GetDataJson(self::api()."/bigmaps/$bigmap/keys?key=".rawurlencode($key)."&select=value&limit=1");
+
+        return $result->isSuccess() && isset($result->data[0]) && is_array($result->data[0]) ? $result->data[0] : null;
+    }
+
     /** @var array<string, ?string> address => alias (null = none, or the lookup failed), per process */
     private static array $aliasCache = [];
 

@@ -33,6 +33,9 @@ class OptionsNotifier
     const kNotify_Staking                       = 'notify_staking';
     const kNotify_Origination                   = 'notify_origination';
 
+    // Messages addressed to the wallet in on-chain chats (Chad Chat, Trollbox replies)
+    const kNotify_Messages                      = 'notify_messages';
+
     const kNotify_Domains                       = 'notify_domains';
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -122,6 +125,7 @@ class OptionsNotifier
         $this->addType(OptionsNotifier::kNotify_TokenComment,           true);
         $this->addType(OptionsNotifier::kNotify_Staking,                true);
         $this->addType(OptionsNotifier::kNotify_Origination,            true);
+        $this->addType(OptionsNotifier::kNotify_Messages,               true);
         $this->addType(OptionsNotifier::kNotify_Domains,                true);
     }
 
@@ -143,6 +147,7 @@ class OptionsNotifier
         $this->addType(OptionsNotifier::kNotify_TokenComment,           true);
         $this->addType(OptionsNotifier::kNotify_Staking,                true);
         $this->addType(OptionsNotifier::kNotify_Origination,            true);
+        $this->addType(OptionsNotifier::kNotify_Messages,               true);
     }
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -169,6 +174,7 @@ class OptionsNotifier
             case OptionsNotifier::kNotify_TokenComment:         $title = Phrase::I()->filterTypeTokenComment; break;
             case OptionsNotifier::kNotify_Staking:              $title = Phrase::I()->filterTypeStaking; break;
             case OptionsNotifier::kNotify_Origination:          $title = Phrase::I()->filterTypeOrigination; break;
+            case OptionsNotifier::kNotify_Messages:             $title = Phrase::I()->filterTypeMessages; break;
 
             case OptionsNotifier::kNotify_Domains:              $title = Phrase::I()->filterTypeDomainsEvents; break;
 

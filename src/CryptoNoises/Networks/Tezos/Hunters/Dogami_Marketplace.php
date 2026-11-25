@@ -13,7 +13,7 @@ class Dogami_Marketplace extends Dogami
 {
     public function parseTransaction(array $recInit, array $subRecords): bool
     {
-        if ($recInit['target'] != self::kMarketplaceKTID)
+        if ($recInit['target'] != self::kMarketplaceKTID && $recInit['target'] != self::kMarketplaceV2KTID)
             return false;
 
         if ($recInit['entrypoint'] == 'addToMarketplace')
@@ -34,8 +34,10 @@ class Dogami_Marketplace extends Dogami
         {
             $value = $recInit['parameter']['value'];
 
+            // Listings priced in DOGA, dogami's own token (7% on v2), are not reported: the notification path has
+            // no DOGA price. Handing them on silently rather than warning about every one.
             if ($value['token_symbol'] != 'XTZ')
-                throw new Exception("Unknown token_symbol [{$value['token_symbol']}]");
+                return false;
 
             if (!isset($value['swap_type']['regular']))
                 throw new Exception("Unknown swap_type (not 'regular')");
@@ -63,7 +65,7 @@ class Dogami_Marketplace extends Dogami
             $event->currency                = $listing->currency;
             $event->quantity                = $listing->quantity;
 
-            $event->marketplace_address     = self::kMarketplaceKTID;
+            $event->marketplace_address     = $recInit['target'];
             $event->token_address           = $listing->tokenAddress;
             $event->token_id                = $listing->tokenId;
 
@@ -85,6 +87,10 @@ class Dogami_Marketplace extends Dogami
 
     private function collect(array $recInit, array $subRecords): bool
     {
+        // A DOGA-paid purchase moves DOGA by token transfers, not tez: the generic hunters report what moved
+        if (($recInit['parameter']['value']['token_symbol'] ?? 'XTZ') != 'XTZ')
+            return false;
+
         return $this->analyzeStdTokenPurchaseEvent($recInit, $subRecords, self::kMarketplaceFeeWallet);
     }
 }

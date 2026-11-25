@@ -550,6 +550,18 @@ class EventFlow
             $this->pushEventNotificationByOwnerAdid($targetAdid, $targetAddress, $eventFlowId, NotificationType::TokenCommentReply);
         }
 
+        //===[ CHAT EVENTS ]============================================================================================
+
+        // TezCoolHunter puts the wallet the message is addressed to in target_address
+        else if ($this->event_type == Enum\EventFlowType::ChatMessage)
+        {
+            $this->pushEventNotificationByOwnerAdid($targetAdid, $targetAddress, $eventFlowId, NotificationType::ChatMessage);
+        }
+        else if ($this->event_type == Enum\EventFlowType::ChatReply)
+        {
+            $this->pushEventNotificationByOwnerAdid($targetAdid, $targetAddress, $eventFlowId, NotificationType::ChatReply);
+        }
+
         //===[ LIST/UNLIST EVENTS ]=====================================================================================
 
         else if ($this->event_type == Enum\EventFlowType::TokenList)
