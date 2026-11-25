@@ -106,9 +106,9 @@ return [
         // TzKT Pro API key, sent as the `apikey` header to the TzKT URLs above. '' = the free tier.
         'tzkt_api_key'                          => '',
 
-        // A Tezos node's RPC, for bakers' DAL participation (one request per watched baker every ten minutes).
-        // '' = no DAL alerts.
-        'rpc_url'                               => 'https://rpc.tzkt.io/mainnet',
+        // Tezos node RPCs, comma-separated or a list, for bakers' DAL participation and protocol constants. The
+        // freshest are used, earlier ones first; one behind the chain or failing is skipped. '' = no DAL alerts.
+        'rpc_urls'                              => 'https://rpc.tzkt.io/mainnet,https://rpc.tzbeta.net,https://mainnet.smartpy.io',
 
         // IPFS gateway that token metadata and media are read through.
         // The public ipfs.io gateway rate-limits heavily, which surfaces as "IPFS returned empty data" in the

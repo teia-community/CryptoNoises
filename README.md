@@ -857,8 +857,10 @@ rights, DAL & governance"):
 
 The last three come from `bots-baker-alerts` (profile `bots`, `run /tezos-network/baker-alerts`), which polls TzKT
 every ten minutes: they are about now, and the indexer may be days behind the head. DAL participation and the
-protocol constants (DAL ratio, cycle length; re-read every ten minutes) come from a node's RPC, `TEZOS_RPC_URL` (a
-public one by default; a self-hosted TzKT has no such endpoint). Voting period ends are given as a time and as the
+protocol constants (DAL ratio, cycle length; re-read every ten minutes) come from Tezos node RPCs,
+`TEZOS_RPC_URLS` (three public ones by default; a self-hosted TzKT has no such endpoint). Every minute their heads
+are compared, and a node more than two levels behind the best, or one that fails, is skipped until the next
+comparison; earlier ones are preferred. Voting period ends are given as a time and as the
 cycle and level they fall on. Missed rights are counted a few levels short of the head, where a right's outcome is
 final, over the hour by the clock (the level an hour ago comes from TzKT: block times change with protocol upgrades,
 60 s at launch and 6 s now); the highest level reported to each user is kept in `config`

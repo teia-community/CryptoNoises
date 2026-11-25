@@ -94,8 +94,10 @@ class Config
     // TzKT Pro key, sent as the `apikey` header to the TzKT URLs above; empty for the free tier
     public string $tzktApiKey;
 
-    // A Tezos node's RPC, for what only the protocol knows (a baker's DAL participation). Empty = not used.
-    public string $tezosRpcUrl;
+    // Tezos node RPCs, for what only the protocol knows (a baker's DAL participation); see Vendors/TezosRpc.php.
+    // Empty = not used.
+    /** @var string[] */
+    public array $tezosRpcUrls;
 
     public string $ipfsGatewayUrl;
 
@@ -137,7 +139,9 @@ class Config
         $this->tzktApiUrl                           = rtrim((string) Environment::get('tezos.tzkt_api_url', self::kTZKT_API_DEFAULT), '/');
         $this->tzktAliasesUrl                       = rtrim((string) Environment::get('tezos.tzkt_aliases_url', self::kTZKT_API_DEFAULT), '/');
         $this->tzktApiKey                           = trim((string) Environment::get('tezos.tzkt_api_key', ''));
-        $this->tezosRpcUrl                          = rtrim((string) Environment::get('tezos.rpc_url', 'https://rpc.tzkt.io/mainnet'), '/');
+        $rpcUrls                                    = Environment::get('tezos.rpc_urls', 'https://rpc.tzkt.io/mainnet,https://rpc.tzbeta.net,https://mainnet.smartpy.io');
+        $this->tezosRpcUrls                         = array_values(array_filter(array_map(fn ($url) => rtrim(trim((string) $url), '/'),
+                                                          is_array($rpcUrls) ? $rpcUrls : explode(',', (string) $rpcUrls))));
 
         // Gateway that token metadata and media are read through. The public ipfs.io gateway rate-limits hard
         // these days, which shows up as "IPFS returned empty data", so point this at a gateway you control.

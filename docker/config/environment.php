@@ -94,8 +94,9 @@ return [
         // TzKT Pro API key (sent as the `apikey` header); empty for the free tier
         'tzkt_api_key'              => $env('TEZOS_TZKT_API_KEY', ''),
 
-        // A Tezos node's RPC, for bakers' DAL participation. A few requests per baker alert pass.
-        'rpc_url'                   => $env('TEZOS_RPC_URL', 'https://rpc.tzkt.io/mainnet'),
+        // Tezos node RPCs, comma-separated, for bakers' DAL participation and protocol constants. Several, so one
+        // falling behind or failing is skipped (Vendors/TezosRpc.php); earlier ones are preferred.
+        'rpc_urls'                  => $env('TEZOS_RPC_URLS', 'https://rpc.tzkt.io/mainnet,https://rpc.tzbeta.net,https://mainnet.smartpy.io'),
 
         // Gateway used to read token metadata and media
         'ipfs_gateway_url'          => $env('TEZOS_IPFS_GATEWAY_URL', 'https://ipfs.io/ipfs/'),
