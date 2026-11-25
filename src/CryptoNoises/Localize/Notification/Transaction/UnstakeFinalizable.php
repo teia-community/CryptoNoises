@@ -49,5 +49,12 @@ class UnstakeFinalizable extends AbstractTransaction
 
             $this->color = self::COLOR_ORANGE;
         }
+
+        // Finalizing takes a wallet signature; Tezos' own staking page does it for any staker
+        $this->buttons[] = [
+            NotificationButton::Link('Finalize on stake.tezos.com', self::kSTAKING_URL),
+        ];
     }
+
+    const kSTAKING_URL = 'https://stake.tezos.com/';
 }

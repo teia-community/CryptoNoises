@@ -37,6 +37,10 @@ return [
         'time_limit_sec' => $envInt('WORKER_TIME_LIMIT_SEC', 55),
     ],
 
+    // Appends the notification class and the event / notification ids to every message sent. For debugging only:
+    // on a development instance they are written to the log either way.
+    'notification_debug_footer' => (bool) $envInt('NOTIFICATION_DEBUG_FOOTER', 0),
+
     //------------------------------------------------------------------------------------------------------------------
     // CryptoNoises (bots + API)
 

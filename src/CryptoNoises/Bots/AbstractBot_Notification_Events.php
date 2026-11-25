@@ -964,6 +964,7 @@ trait AbstractBot_Notification_Events
             ->bindDebugToken('amountInTokenEntity1st',      $amountInTokenEntity1st)
             ->bindDebugToken('amountInTokenEntity2nd',      $amountInTokenEntity2nd)
             ->bindDebugMarketplace($marketplace)
+            ->logDebugLine()
             ;
 
         return $notification;

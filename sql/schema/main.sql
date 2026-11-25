@@ -430,6 +430,15 @@ CREATE TABLE IF NOT EXISTS `queue_wallets_sync` (
   KEY `wallet_address` (`wallet_address`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Finalize reminders already sent, so each goes out once per (unstake request, user): the reminder event itself only
+-- stays in events_flow for about ten minutes (see UnstakeRemindersSent)
+CREATE TABLE IF NOT EXISTS `unstake_reminders_sent` (
+  `request_id` bigint unsigned NOT NULL,
+  `user_id` int unsigned NOT NULL,
+  `ts_sent` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`request_id`,`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `users` (
   `user_id` int unsigned NOT NULL AUTO_INCREMENT,
   `type` enum('user') NOT NULL DEFAULT 'user',

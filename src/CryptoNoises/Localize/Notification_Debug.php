@@ -10,6 +10,9 @@ trait Notification_Debug
 {
     protected array $debugData = [];
 
+    /** "Transaction\NftPurchased", "eventItem #644", ... - logged on development instances, see logDebugLine() */
+    protected array $debugLine = [];
+
     public function getDebugStamp(array $appendData = []): array
     {
         return array_merge($this->debugData, $appendData);
@@ -20,10 +23,12 @@ trait Notification_Debug
         $className = get_class($this);
         $this->debugData['className'] = $className;
 
-        if (Config::cfg()->isDevelopment())
+        $this->debugLine[] = str_replace('CryptoNoises\\Localize\\Notification\\', '', $className);
+
+        if (Config::cfg()->notificationDebugFooter)
         {
             $this->footer[] = Notification::EMPTY_LINE;
-            $this->footer[] = str_replace('CryptoNoises\\Localize\\Notification\\', '', $className);
+            $this->footer[] = end($this->debugLine);
         }
         return $this;
     }
@@ -32,8 +37,32 @@ trait Notification_Debug
     {
         $this->debugData[$dataKey] = $data;
 
-        if (Config::cfg()->isDevelopment() && $attachKeyToNotification)
-            $this->footer[] = "$dataKey #".$data[$attachKeyToNotification];
+        if ($attachKeyToNotification && isset($data[$attachKeyToNotification]))
+        {
+            $this->debugLine[] = "$dataKey #".$data[$attachKeyToNotification];
+
+            if (Config::cfg()->notificationDebugFooter)
+                $this->footer[] = end($this->debugLine);
+        }
+
+        return $this;
+    }
+
+    /**
+     * On a development instance, one line per notification in the container log - what the message footer used to
+     * carry, kept out of the message itself. A production instance logs nothing here.
+     */
+    public function logDebugLine(): self
+    {
+        if (Config::cfg()->isDevelopment() && $this->debugLine)
+        {
+            $line = gmdate('H:i:s').' notification '.join(' · ', $this->debugLine)."\n";
+
+            if (defined('STDOUT'))
+                fwrite(STDOUT, $line);
+            else
+                error_log(rtrim($line));
+        }
 
         return $this;
     }

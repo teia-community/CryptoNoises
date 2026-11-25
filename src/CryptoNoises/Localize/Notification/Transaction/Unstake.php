@@ -29,6 +29,11 @@ class Unstake extends AbstractTransaction
                 '{###AMOUNT_TOTAL_CONVERTED###}',
                 '- Spendable once finalized, from: {###UNLOCK###}',
             ];
+
+            // Once unlocked, the tez are finalized there
+            $this->buttons[] = [
+                NotificationButton::Link('stake.tezos.com', UnstakeFinalizable::kSTAKING_URL),
+            ];
         }
         else if (self::IsDiscord())
         {
@@ -41,7 +46,8 @@ class Unstake extends AbstractTransaction
             ];
 
             $this->buttons[] = [
-                NotificationButton::Link('Baker', '{###BAKER_URL###}'),
+                NotificationButton::Link('Baker',           '{###BAKER_URL###}'),
+                NotificationButton::Link('stake.tezos.com', UnstakeFinalizable::kSTAKING_URL),
             ];
 
             $this->color = self::COLOR_ORANGE;

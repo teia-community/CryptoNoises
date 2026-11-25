@@ -226,9 +226,10 @@ class TezosNetwork extends AbstractCommand
      * cheap and can run far ahead - on a stack syncing from block 1, years ahead - and notifications about this
      * year's staking must not go out while every other notification is still walking through 2021.
      *
-     * Saving an event twice is harmless: EventsFlow::insert() finds an existing event by its operation id and
-     * sub-id, and EventFlow::save() then returns before notifying anybody. A pass that dies before moving the
-     * cursor is simply redone.
+     * A pass that dies before moving the cursor is simply redone, at once: EventsFlow::insert() finds the events it
+     * already saved by operation id and sub-id, and EventFlow::save() then notifies nobody again. That only holds
+     * while the events are still in events_flow - about ten minutes, before Lifecycles::cleanUpEventsFlow() moves
+     * them out - which an immediate redo is well within. A replay hours later would notify again.
      */
     public function analyzeNewAccountOperations(): void
     {
