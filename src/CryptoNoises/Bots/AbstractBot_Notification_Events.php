@@ -675,6 +675,13 @@ trait AbstractBot_Notification_Events
 
             // These variables are used again below (details buttons), so they are not unset
         }
+        else
+        {
+            // Mints without an iteration (objkt's generative module, any non-fx(hash) mint) drop the line rather
+            // than leaving the placeholder unbound, which logs a warning per notification
+            $notification->bind('{###ITERATION_IDX###}', Notification::HIDE_ME);
+            $notification->bind('{###ITERATION_URL###}', Notification::HIDE_ME);
+        }
 
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
