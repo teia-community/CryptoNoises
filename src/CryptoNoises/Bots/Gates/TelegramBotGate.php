@@ -230,6 +230,20 @@ class TelegramBotGate extends AbstractBot implements AbstractBotGate
     }
 
     /**
+     * @return array<int, array{string, string}> per row id: status, note
+     * @throws NotificationSendFailedException
+     */
+    public function notifyEventDigest(array $rows): array
+    {
+        [$notification, $results] = $this->doNotifyEventDigest($this->tgBotConnection->user, $rows);
+
+        if ($notification !== null)
+            $this->tgBotConnection->deliverBotNotifications($notification);
+
+        return $results;
+    }
+
+    /**
      * @throws NotificationSendFailedException
      */
     public function notifyInformFlow(array $notificationItem, array $informItem): bool

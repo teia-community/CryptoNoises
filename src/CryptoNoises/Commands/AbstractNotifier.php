@@ -28,6 +28,35 @@ abstract class AbstractNotifier extends AbstractCommand
      */
     abstract protected function getBotGate(int $userId): object;
 
+    /** All of a digest user's due rows, as one message */
+    private function processDigest(Models\EventsNotifications $queue, int $userId): void
+    {
+        $tsStart = Time::Microtime();
+        $rows    = $queue->getDueDigestRows($this->platform(), $userId);
+
+        foreach ($rows as $row)
+            $queue->updateNotifyStatus($this->platform(), $row['event_notification_id'], $queue::kNotifyStatus_Active);
+
+        try
+        {
+            $gate = $this->getBotGate($userId);
+
+            $results = $gate->isRecipientActive()
+                ? $gate->notifyEventDigest($rows)
+                : array_fill_keys(array_column($rows, 'event_notification_id'), [$queue::kNotifyStatus_Skipped, 'User is frozen']);
+        }
+        catch (Exception $e)
+        {
+            $results = array_fill_keys(array_column($rows, 'event_notification_id'), [$queue::kNotifyStatus_Error, $e->getMessage()]);
+            Debugger::Error($e->getMessage());
+        }
+
+        foreach ($results as $id => [$status, $note])
+            $queue->updateNotifyStatus($this->platform(), $id, $status, Time::Microtime() - $tsStart, $note);
+
+        $this->logMsg('Digest for user #'.$userId.': '.count($rows).' notification(s)');
+    }
+
     /** Lock of one queue's sender. Telegram keeps its original lock ids, so a mixed-version restart cannot run two. */
     protected function lockId(string $queue): string
     {
@@ -95,6 +124,12 @@ abstract class AbstractNotifier extends AbstractCommand
             {
                 $this->logMsg("No task. Sleep for 1 sec");
                 sleep(1);
+                continue;
+            }
+
+            if (!empty($notificationItem['notify_after']) && $queue instanceof Models\EventsNotifications)
+            {
+                $this->processDigest($queue, (int) $notificationItem['user_id']);
                 continue;
             }
 

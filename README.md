@@ -465,6 +465,17 @@ Matrix room (`MATRIX_ALERTS_ROOM`, invite the bot) and/or the Telegram debugger 
 out at most once an hour with a count of repeats, and at most 30 alerts an hour. Existing installs need the
 `ops_alerts_sent` table from `sql/schema/main.sql`.
 
+**Stalls.** `/lifecycle/check/stalls` (every 5 minutes) alerts when a sync, analyzer or event stage that is not caught
+up has not moved for 15 minutes, when a notification has waited 15 minutes, or when TzKT is not at the head.
+
+## Digest
+
+Users can bundle routine wallet activity (payments, NFT transfers, sales, offers, auctions, delegators) into one
+message every 15 minutes, hour or 3 hours (Settings → "📬 Digest"). Such a notification waits until the end of the
+window (`notify_after`, windows aligned on the clock); alerts, reminders and messages still go out at once. Existing
+installs need `notify_after` on the `events_notifications_*` tables (live, template and monthly, after
+`task_lifetime`) and `options_notifier.digest_minutes`; see `sql/schema/main.sql`.
+
 ## Teia events
 
 `bots-teia-events` (profile `bots`) polls the Teia events contract (`KT1KDXX…913o`) every 5 minutes and announces each

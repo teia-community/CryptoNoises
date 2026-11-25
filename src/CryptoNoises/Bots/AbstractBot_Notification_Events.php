@@ -33,6 +33,70 @@ trait AbstractBot_Notification_Events
      * @throws NotificationSendFailedException
      * @throws NotificationSendSkippedException
      */
+    /**
+     * One message for a digest user's due rows: the first line of each notification, with the wallet when the user
+     * watches more than one. A single row is sent as its full notification.
+     *
+     * @return array{?Notification, array<int, array{string, string}>} the message (null when nothing is left to
+     *         send), and per row id its status and note
+     */
+    public function doNotifyEventDigest(User $user, array $rows): array
+    {
+        $lines   = [];
+        $results = [];
+        $single  = null;
+        $several = $user->getWalletsCount() > 1;
+
+        foreach ($rows as $row)
+        {
+            $id = (int) $row['event_notification_id'];
+
+            try
+            {
+                $event = Models\EventsFlow::model()->getEventById($row['event_flow_id']);
+
+                if (empty($event))
+                    throw new \Exception("Cannot find event-flow #{$row['event_flow_id']}");
+
+                $notification = $this->doNotifyEventFlow($user, $row, $event);
+                $line = self::FirstLine($notification);
+
+                if ($line === null)
+                    throw new NotificationSendSkippedException('Nothing to say');
+
+                if ($several && $row['owner_adid'] && ($wallet = $user->getWalletByAdid((int) $row['owner_adid'])))
+                    $line .= ' · '.Notification::SafeText($wallet->getWalletName());
+
+                $lines[]      = $line;
+                $single       = $notification;
+                $results[$id] = [Models\EventsNotifications::kNotifyStatus_Done, ''];
+            }
+            catch (NotificationSendSkippedException $e)
+            {
+                $results[$id] = [Models\EventsNotifications::kNotifyStatus_Skipped, $e->getMessage()];
+            }
+            catch (\Throwable $e)
+            {
+                $results[$id] = [Models\EventsNotifications::kNotifyStatus_Error, $e->getMessage()];
+            }
+        }
+
+        if (!$lines)
+            return [null, $results];
+
+        return [count($lines) == 1 ? $single : Notification\EventsDigest::I($user, $lines), $results];
+    }
+
+    private static function FirstLine(Notification $notification): ?string
+    {
+        foreach ([$notification->getTitle(), $notification->getDescription()] as $text)
+            foreach (explode("\n", (string) $text) as $line)
+                if (trim(strip_tags($line)) !== '')
+                    return trim($line);
+
+        return null;
+    }
+
     public function doNotifyEventFlow(User $user, array $notificationItem, array $eventItem): Notification
     {
         /** @var Token $tokenEntity */

@@ -46,6 +46,11 @@ trait AbstractBot_Settings
                 $notification = $this->doSettings_MissedAttestations($user, $callbackAction, $caBuilder);
                 break;
 
+            case 'digest':
+            case 'digest.set':
+                $notification = $this->doSettings_Digest($user, $callbackAction, $caBuilder);
+                break;
+
             default:
                 $notification = null;
                 break;
@@ -74,6 +79,9 @@ trait AbstractBot_Settings
             $buttons[] = NotificationButton::CallbackAction(Phrase::I()->finalizeReminder.': '
                 .Phrase::FinalizeReminder($options->getFinalizeReminderSec()),
                 $caBuilder->newEventAuid('finalize-reminder'));
+
+            $buttons[] = NotificationButton::CallbackAction(Phrase::I()->digest.': '.Phrase::Digest($options->getDigestMinutes()),
+                $caBuilder->newEventAuid('digest'));
 
             $buttons[] = NotificationButton::CallbackAction(Phrase::I()->missedAttestations.': '
                 .Phrase::MissedAttestations($options->getMissedAttestationsAlert()),
@@ -169,6 +177,33 @@ trait AbstractBot_Settings
         $notification->appendButtonsRow([
             NotificationButton::CallbackAction(Phrase::I()->actionBack, $caBuilder->newEventAuid()),
         ]);
+
+        return $notification;
+    }
+
+    private function doSettings_Digest(User $user, CallbackAction $callbackAction, CallbackAction $caBuilder): Notification
+    {
+        $notification = Notification\Settings\Digest::I($user);
+        $options      = $user->options();
+        $values       = \CryptoNoises\Entities\OptionsNotifier::GetDigestValues();
+
+        if ($callbackAction->event == 'digest.set' && isset($values[$callbackAction->data['value'] ?? null]))
+            $options->setDigestMinutes($values[$callbackAction->data['value']]);
+
+        $buttons = [];
+
+        foreach ($values as $key => $minutes)
+        {
+            $title = Phrase::Digest($minutes);
+
+            if ($minutes === $options->getDigestMinutes())
+                $title = Phrase::WithIcon('✅', $title);
+
+            $buttons[] = NotificationButton::CallbackAction($title, $caBuilder->newEventAuid('digest.set', ['value' => $key]));
+        }
+
+        $notification->appendButtonsAsRows($buttons, 1);
+        $notification->appendButtonsRow([NotificationButton::CallbackAction(Phrase::I()->actionBack, $caBuilder->newEventAuid())]);
 
         return $notification;
     }

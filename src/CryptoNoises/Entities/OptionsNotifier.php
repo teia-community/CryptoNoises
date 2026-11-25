@@ -302,6 +302,30 @@ class OptionsNotifier
     // Bakers: how many missed attestations within an hour make an alert. Missing one now and then is normal; a node
     // restart of a minute already misses several, and an offline baker misses one every block.
 
+    const kDigestColumn                         = 'digest_minutes';
+
+    /** key => minutes per digest; 0 = every notification at once */
+    public static function GetDigestValues(): array
+    {
+        return ['off' => 0, 'm15' => 15, 'h1' => 60, 'h3' => 180];
+    }
+
+    public function getDigestMinutes(): int
+    {
+        $value = (int) ($this->data[self::kDigestColumn] ?? 0);
+
+        return in_array($value, self::GetDigestValues(), true) ? $value : 0;
+    }
+
+    public function setDigestMinutes(int $minutes): void
+    {
+        if (!in_array($minutes, self::GetDigestValues(), true))
+            return;
+
+        $this->data[self::kDigestColumn] = $minutes;
+        Models\OptionsNotifier::model()->save($this->userId, $this->walletAdid, [self::kDigestColumn => $minutes]);
+    }
+
     const kMissedAttestationsColumn             = 'missed_attestations_alert';
     const kMissedAttestationsOff                = 0;
     const kMissedAttestationsDefault            = 10;
