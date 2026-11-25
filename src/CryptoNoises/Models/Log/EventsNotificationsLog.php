@@ -23,6 +23,7 @@ class EventsNotificationsLog extends VssModel
         {
             case Config::kPLATFORM_Discord:     return 'events_notifications_discord_'.date('Y_m',  strtotime($timePoint));
             case Config::kPLATFORM_Telegram:    return 'events_notifications_telegram_'.date('Y_m', strtotime($timePoint));
+            case Config::kPLATFORM_Matrix:      return 'events_notifications_matrix_'.date('Y_m', strtotime($timePoint));
         }
         Log::Fatal(get_class($this), __FUNCTION__, "Unknown platform [$platform]");
         throw new \InvalidArgumentException("Unknown platform [$platform]");

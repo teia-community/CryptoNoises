@@ -69,6 +69,13 @@ return [
             'channel_missed_notifications'  => $env('DISCORD_CHANNEL_MISSED_NOTIFICATIONS'),
         ],
 
+        // Matrix bot: its user id, and the client-server API it uses - pantalaimon, which encrypts and decrypts for
+        // it (compose profile "matrix"). The password is MATRIX_PASSWORD. Empty user = no Matrix bot.
+        'matrix' => [
+            'user'                          => $env('MATRIX_USER', ''),
+            'proxy_url'                     => $env('MATRIX_PROXY_URL', 'http://pantalaimon:8009'),
+        ],
+
         'channel_user_ids' => [
             'tezos_global'      => $envInt('CHANNEL_USER_TEZOS_GLOBAL',     null),
             'teia'              => $envInt('CHANNEL_USER_TEIA',             null),

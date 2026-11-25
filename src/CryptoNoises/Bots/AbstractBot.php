@@ -58,8 +58,9 @@ abstract class AbstractBot
         return Config::cfg()->isDiscordPlatform();
     }
 
+    /** Telegram, and Matrix, which renders the Telegram variant (Config::usesTelegramLayout()) */
     protected static function IsTelegram(): bool
     {
-        return Config::cfg()->isTelegramPlatform();
+        return Config::cfg()->usesTelegramLayout();
     }
 }

@@ -70,6 +70,7 @@ define('TELEGRAM_WEBHOOK_SECRET',           $cnEnv('TELEGRAM_WEBHOOK_SECRET'));
 // Discord
 
 define('kDISCORD_TOKEN_MAINBOT',            $cnEnv('DISCORD_TOKEN_MAINBOT'));
+define('kMATRIX_PASSWORD',                  $cnEnv('MATRIX_PASSWORD'));
 define('kDISCORD_TOKEN_ASSISTANT',          $cnEnv('DISCORD_TOKEN_ASSISTANT'));
 define('kDISCORD_GUILD_ID',                 $cnEnv('DISCORD_GUILD_ID'));
 define('kDISCORD_CLIENT_ID_MAINBOT',        $cnEnv('DISCORD_CLIENT_ID_MAINBOT'));

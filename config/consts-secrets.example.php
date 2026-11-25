@@ -47,6 +47,9 @@ const TELEGRAM_WEBHOOK_SECRET               = '';
 
 // Bot token for main-loop + notifier threads
 const kDISCORD_TOKEN_MAINBOT                = '';
+
+// Matrix bot: the password of api.matrix.user, used to log in through pantalaimon (which needs its own device)
+const kMATRIX_PASSWORD                      = '';
 // Bot token for assistant thread (server members sync + stats message); may be the same as main bot
 const kDISCORD_TOKEN_ASSISTANT              = '';
 // Your Discord server (guild) id - the assistant thread syncs its members (needs the GUILD_MEMBERS intent)

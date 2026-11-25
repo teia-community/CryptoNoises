@@ -25,6 +25,7 @@ class InformNotifications extends VssModel
         {
             case Config::kPLATFORM_Discord:     return 'inform_notifications_discord';
             case Config::kPLATFORM_Telegram:    return 'inform_notifications_telegram';
+            case Config::kPLATFORM_Matrix:      return 'inform_notifications_matrix';
         }
 
         Log::Fatal(get_class($this), __FUNCTION__, "Unknown platform [$platform]");

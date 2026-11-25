@@ -195,7 +195,7 @@ trait AbstractBot_Wallets
                 $btnBack = NotificationButton::CallbackAction(Phrase::I()->actionBack,
                     $caBuilder->newEventAuid());
 
-                if (Config::cfg()->isTelegramPlatform())
+                if (Config::cfg()->usesTelegramLayout())
                 {
                     $notification->appendButtonsRow([$btnIcon, $btnRename]);
                     $notification->appendButtonsRow([$btnDelete, $btnFilterByTypes]);
