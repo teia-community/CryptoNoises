@@ -25,9 +25,9 @@ use Exception;
  * reminded (OptionsNotifier::GetFinalizeReminderValues(), one day by default, or off).
  *
  * Every pass reads all unlocked, unfinalized requests on the chain (a few dozen, one or two TzKT requests) and keeps
- * those of watched wallets. A reminder is an event keyed by (request id, user id) at block 0, so EventsFlow::insert()
- * finds it on every later pass and nobody is reminded twice; a request finalized in the meantime is simply no
- * longer in the list.
+ * those of watched wallets. Each (request, user) is reminded once, recorded in unstake_reminders_sent: the reminder
+ * event cannot be relied on for that, it leaves events_flow after about ten minutes (see UnstakeRemindersSent). A
+ * request finalized in the meantime is simply no longer in the list.
  */
 class UnstakeReminders extends AbstractCommand
 {
@@ -53,7 +53,7 @@ class UnstakeReminders extends AbstractCommand
                 $due = $this->passOnce();
 
                 // Printed every pass (every 10 minutes), so the container log shows the service is alive
-                $this->logMsg(gmdate('H:i:s')." unstake reminders: $due due (already sent ones are skipped)", "\n", true);
+                $this->logMsg(gmdate('H:i:s')." unstake reminders: $due sent", "\n", true);
             }
             catch (Exception $e)
             {
@@ -68,19 +68,24 @@ class UnstakeReminders extends AbstractCommand
     }
 
     /**
-     * @return int reminders due in this pass, including those sent by an earlier pass (they are not sent again)
+     * @param array[]|null $requests unlocked, unfinalized unstake requests as TzKT returns them; null = ask TzKT.
+     *                               Passing them is for tests: there is not always one due on chain.
+     * @return int reminders sent in this pass
      */
-    public function passOnce(): int
+    public function passOnce(?array $requests = null): int
     {
-        $head = Tzkt::GetBlockLastIndex();
-
-        if ($head === null)
-            throw new Exception("TzKT did not answer: no head level");
-
-        $requests = Tzkt::GetUnlockedUnstakeRequests($head);
-
         if ($requests === null)
-            throw new Exception("TzKT did not answer: no unstake requests");
+        {
+            $head = Tzkt::GetBlockLastIndex();
+
+            if ($head === null)
+                throw new Exception("TzKT did not answer: no head level");
+
+            $requests = Tzkt::GetUnlockedUnstakeRequests($head);
+
+            if ($requests === null)
+                throw new Exception("TzKT did not answer: no unstake requests");
+        }
 
         if (empty($requests))
             return 0;
@@ -108,6 +113,9 @@ class UnstakeReminders extends AbstractCommand
 
                 if ($delay < 0 || Time::Time() < $unlockTs + $delay)
                     continue;
+
+                if (!Models\UnstakeRemindersSent::model()->claim((int) $request['id'], $userId))
+                    continue;   // reminded on an earlier pass
 
                 $event = new EventFlow();
                 $event->initInTezosNetwork(EventFlow::UNDEFINED_NETWORK_BLOCK, (int) $request['id'], $userId);
@@ -138,7 +146,7 @@ class UnstakeReminders extends AbstractCommand
     public function runOnce(): void
     {
         $due = $this->passOnce();
-        $this->logMsg("Unstake reminders due: $due (already sent ones are skipped)", "\n", true);
+        $this->logMsg("Unstake reminders sent: $due", "\n", true);
     }
 
     /**

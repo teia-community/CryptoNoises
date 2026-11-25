@@ -787,7 +787,9 @@ What a wallet is told, under two settings switches ("🥩 Staking & delegation",
   finalized within hours - often by a service that does it for stakers - and the reminder is for those left
   unlocked for longer. TzKT reports these as `pending` with `unlockLevel` at or below the head; its `finalizable`
   status is asked for too, and has been empty. The unlock filter is applied by the job itself: TzKT silently
-  ignores `unlockLevel.le` and `status.in` and would return requests that are still locked.
+  ignores `unlockLevel.le` and `status.in` and would return requests that are still locked. "Once" is recorded in
+  `unstake_reminders_sent`: an event only stays in `events_flow` for about ten minutes before the cleanup moves it
+  to the monthly table, so the event itself cannot stop a ten-minute job from sending the reminder again.
 
 Two details worth knowing:
 
@@ -808,6 +810,8 @@ ALTER TABLE options_notifier
     ADD COLUMN notify_staking enum('yes','no') DEFAULT NULL AFTER notify_token_comment,
     ADD COLUMN notify_origination enum('yes','no') DEFAULT NULL AFTER notify_staking,
     ADD COLUMN finalize_reminder_sec int DEFAULT NULL AFTER threshold_offer;
+
+-- cryptonoises: unstake_reminders_sent, from sql/schema/main.sql
 ```
 
 `notify_token_comment` must exist first; it came with the comment notifications, and an install that never added
