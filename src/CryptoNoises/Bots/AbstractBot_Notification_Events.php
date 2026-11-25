@@ -283,6 +283,12 @@ trait AbstractBot_Notification_Events
             $notification   = Notification\Transaction\BakerStakerUnstake::I($user);
             $thresholdScope = OptionsNotifier::kThresholdTransaction;
         }
+        else if ($notificationType == Enum\NotificationType::TeiaEvent)
+        {
+            $notifyFilter   = OptionsNotifier::kNotify_TeiaEvents;
+            $notification   = Notification\TeiaEvent::I($user);
+            $thresholdScope = null;
+        }
         else if ($notificationType == Enum\NotificationType::BakerMissedRights)
         {
             $notifyFilter   = OptionsNotifier::kNotify_BakerAlerts;
@@ -657,6 +663,7 @@ trait AbstractBot_Notification_Events
             case Enum\NotificationType::GovernancePeriod:
             case Enum\NotificationType::GovernanceProposal:
             case Enum\NotificationType::GovernanceVoteReminder:
+            case Enum\NotificationType::TeiaEvent:
                 break;
 
             // The delegated balance, or the tez staked / unstaked
@@ -987,6 +994,27 @@ trait AbstractBot_Notification_Events
             Enum\NotificationType::GovernanceProposal, Enum\NotificationType::GovernanceVoteReminder]))
         {
             $this->bindBakerEvent($notification, $network, $eventItem, $customData ?? []);
+        }
+
+        if ($notificationType == Enum\NotificationType::TeiaEvent)
+        {
+            $e = $customData ?? [];
+            $text = fn ($key, $max) => !empty($e[$key]) ? Notification::SafeText(mb_strimwidth(trim((string) $e[$key]), 0, $max, '…')) : Notification::HIDE_ME;
+
+            $notification->bind('{###EVENT_TITLE###}',       $text('title', 120));
+            $notification->bind('{###EVENT_SUBTITLE###}',    $text('subtitle', 200));
+            $notification->bind('{###EVENT_DESCRIPTION###}', $text('description', 600));
+
+            $buttons = [];
+
+            if (!empty($e['link']) && preg_match('#^https://#', $e['link']))
+                $buttons[] = NotificationButton::Link('Event page', $e['link']);
+
+            $buttons[] = NotificationButton::Link('All Teia events', \CryptoCore\Setapp\TeiaEvents::EventsPageUrl);
+            $notification->appendButtonsRow($buttons);
+
+            if (!empty($e['screenshot']) && preg_match('#^https://#', $e['screenshot']))
+                $notification->setPreviewThumbnailUrl($e['screenshot']);
         }
 
         if ($notificationType == Enum\NotificationType::ChatMessage)

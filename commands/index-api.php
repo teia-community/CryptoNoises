@@ -27,6 +27,8 @@ $f3->route('GET /tezos-network/unstake-reminders/once',          'CryptoNoises\C
 
 $f3->route('GET /tezos-network/baker-alerts',                    'CryptoNoises\Commands\BakerAlerts->run');
 $f3->route('GET /tezos-network/baker-alerts/once',               'CryptoNoises\Commands\BakerAlerts->runOnce');
+$f3->route('GET /teia/events',                                  'CryptoNoises\Commands\TeiaEvents->run');
+$f3->route('GET /teia/events/once',                             'CryptoNoises\Commands\TeiaEvents->runOnce');
 
 $f3->route('GET /tezos-network/wallets/sync',                   'CryptoNoises\Commands\TezosNetwork->syncWalletsStates');
 

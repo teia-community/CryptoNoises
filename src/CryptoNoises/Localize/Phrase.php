@@ -60,6 +60,7 @@ class Phrase
 
     public string $filterTypeAuctionEvents              = '🟤 Auction events';
     public string $filterTypeDomainsEvents              = '🟠 Domain events';
+    public string $filterTypeTeiaEvents                 = '📣 Teia events';
 
     public string $filterTypeTokenMint                  = '⚪️ Token mint';
     public string $filterTypeTokenList                  = '🟠 Token listing';

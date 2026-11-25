@@ -352,6 +352,12 @@ services:
 
   # For watched wallets that are bakers: missed attestations / blocks, governance periods, proposals, vote reminders.
   # Reads TzKT's current state, not history, so it is safe on a stand that is still catching up.
+  # Announces new events from the Teia events contract
+  bots-teia-events:
+    <<: *worker
+    command: ["/opt/cryptonoises/commands/run", "/teia/events"]
+    profiles: ["bots"]
+
   bots-baker-alerts:
     <<: *worker
     command: ["/opt/cryptonoises/commands/run", "/tezos-network/baker-alerts"]

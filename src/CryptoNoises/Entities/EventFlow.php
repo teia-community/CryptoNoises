@@ -748,6 +748,13 @@ class EventFlow
             if ($notificationType !== null)
                 $this->pushEventNotificationForUserIdsAsOwner($this->userIds, $targetAdid, $targetAddress, $eventFlowId, $notificationType);
         }
+        else if ($this->event_type == Enum\EventFlowType::TeiaEvent)
+        {
+            // Everyone; the user-level switch is checked when sending
+            foreach (Models\Users::model()->getActiveUsers() as $userItem)
+                Models\EventsNotifications::model()->insertNotifyTask($userItem['platform'], (int) $userItem['user_id'],
+                    null, null, $eventFlowId, Models\EventsNotifications::kPRIORITY_INDEX_Low, NotificationType::TeiaEvent);
+        }
         else if ($this->event_type == Enum\EventFlowType::Governance)
         {
             $notificationType = match ($this->event_details) {

@@ -458,6 +458,16 @@ Under Docker that check is per container, which is why each thread gets its own 
 does the supervising instead of the `*/1 * * * * bin/discord-start` cron line.
 Logs are written to `log/<Thread>-YYYYMMDD.log`.
 
+## Teia events
+
+`bots-teia-events` (profile `bots`) polls the Teia events contract (`KT1KDXX…913o`) every 5 minutes and announces each
+new, visible event once to every user, with its banner and links. Users turn it off with the "📣 Teia events"
+setting. The first run only records the existing events. Existing installs need:
+
+```sql
+ALTER TABLE options_notifier ADD COLUMN notify_teia_events enum('yes','no') DEFAULT NULL AFTER notify_domains;
+```
+
 ## Matrix bot
 
 A third messenger, notifications first: the same event and info notifications as on Telegram, in a direct message,
