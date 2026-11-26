@@ -403,6 +403,14 @@ class Tzkt extends AbstractVendor
     }
 
     /** The level of the last block at or before a unix time. Null when TzKT did not answer. */
+    /** XTZ price at a level: btc, eur, usd, cny, jpy, krw, eth, gbp */
+    public static function GetQuote(int $level): ?array
+    {
+        $result = self::GetDataJson(self::api()."/quotes?level=$level");
+
+        return $result->isSuccess() && isset($result->data[0]['usd']) ? $result->data[0] : null;
+    }
+
     public static function GetLevelAt(int $time): ?int
     {
         $result = self::GetDataJson(self::api()."/blocks/".gmdate('Y-m-d\TH:i:s\Z', $time)."/level");

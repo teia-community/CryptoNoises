@@ -588,7 +588,7 @@ trait AbstractBot_Notification_Events
 
             $wallet->syncBalanceIfOutOfDate();
 
-            $coinsExchanger = CoinExchange::CreateByWallet($wallet);
+            $coinsExchanger = CoinExchange::CreateByWallet($wallet)->atLevel((int) $eventItem['network_block']);
         }
         else
         {
