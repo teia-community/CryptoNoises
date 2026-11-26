@@ -14,16 +14,17 @@ abstract class BigmapDataAbstract extends VssModel
     abstract public function tableName(): string;
 
     //------------------------------------------------------------------------------------------------------------------
-    // Batching, for the bigmap analyzer: a level's upserts go out as multi-row INSERT ... ON DUPLICATE KEY UPDATE
-    // instead of one round trip each. Rows of one statement have distinct keys, so they do not depend on each other;
-    // a table's pending rows are written before a second upsert of a pending key, before any remove or read of that
-    // table, and at the end of the level - so every key still sees its changes in order.
+    // Batching, for the bigmap analyzer: a level's upserts go out as multi-row INSERT ... ON DUPLICATE KEY UPDATE and
+    // its removes as UPDATE ... WHERE (key) IN (...), instead of one round trip each. A table's pending changes all
+    // have distinct keys of the same shape, so they touch distinct rows and do not depend on each other. They are
+    // written before a change to a pending key or with another key shape, before a read or a partial-key remove,
+    // and at the end of the level - so every key still sees its changes in order.
 
     const kBATCH_MAX_ROWS = 500;
 
     private static bool $batching = false;
 
-    /** @var array<string, array{rows: array[], pkCols: string[][], keys: array<string, true>}> table => pending */
+    /** @var array<string, array{rows: array[], pkCols: string[][], keys: array<string, true>, shape: string, removes: array}> table => pending */
     private static array $pending = [];
 
     public static function BeginBatch(): void
@@ -50,6 +51,9 @@ abstract class BigmapDataAbstract extends VssModel
     {
         $pending = self::$pending[$table] ?? null;
         unset(self::$pending[$table]);
+
+        foreach ($pending['removes'] ?? [] as $group)
+            self::WriteRemoves($table, $group);
 
         if (empty($pending['rows']))
             return;
@@ -80,6 +84,68 @@ abstract class BigmapDataAbstract extends VssModel
         }
     }
 
+    /** One UPDATE per chunk for removes sharing their SET (same level and extra columns) and key columns */
+    private static function WriteRemoves(string $table, array $group): void
+    {
+        $set = [];
+        $params = [];
+
+        foreach ($group['set'] as $column => $value)
+        {
+            if ($value instanceof VssDbExp)
+                $set[] = "`$column` = ".$value->sql;
+            else
+            {
+                $set[] = "`$column` = :s_$column";
+                $params[":s_$column"] = $value;
+            }
+        }
+
+        $columns = '('.join(', ', array_map(fn ($c) => "`$c`", $group['pkCols'])).')';
+
+        foreach (array_chunk($group['tuples'], self::kBATCH_MAX_ROWS) as $chunk)
+        {
+            $tuples = [];
+            $chunkParams = $params;
+
+            foreach ($chunk as $i => $tuple)
+            {
+                $names = [];
+
+                foreach (array_values($tuple) as $j => $value)
+                {
+                    $names[] = ":k{$i}_$j";
+                    $chunkParams[":k{$i}_$j"] = $value;
+                }
+
+                $tuples[] = '('.join(', ', $names).')';
+            }
+
+            Vss::dbTezos()->query("UPDATE `$table` SET ".join(', ', $set)." WHERE $columns IN (".join(', ', $tuples).")", $chunkParams);
+        }
+    }
+
+    /**
+     * Makes room for a change to $primaryKey in this table's pending batch: writes the batch when the key is already
+     * in it, or has another shape than the keys in it. @return string the key's hash
+     */
+    private function prepareKey(array $primaryKey): string
+    {
+        $table  = $this->tableName();
+        $pkHash = json_encode($primaryKey);
+        $shape  = join("\0", array_keys($primaryKey));
+
+        if (isset(self::$pending[$table]['keys'][$pkHash])
+            || (isset(self::$pending[$table]['shape']) && self::$pending[$table]['shape'] !== $shape)
+            || count(self::$pending[$table]['keys'] ?? []) >= self::kBATCH_MAX_ROWS)
+            self::FlushTable($table);
+
+        self::$pending[$table]['shape']         = $shape;
+        self::$pending[$table]['keys'][$pkHash] = true;
+
+        return $pkHash;
+    }
+
     private function flushThisTable(): void
     {
         if (self::$batching)
@@ -104,15 +170,11 @@ abstract class BigmapDataAbstract extends VssModel
 
         if (self::$batching)
         {
-            $table  = $this->tableName();
-            $pkHash = json_encode($primaryKey);
+            $table = $this->tableName();
+            $this->prepareKey($primaryKey);
 
-            if (isset(self::$pending[$table]['keys'][$pkHash]) || count(self::$pending[$table]['rows'] ?? []) >= self::kBATCH_MAX_ROWS)
-                self::FlushTable($table);
-
-            self::$pending[$table]['rows'][]         = $dataInsert;
-            self::$pending[$table]['pkCols'][]       = array_keys($primaryKey);
-            self::$pending[$table]['keys'][$pkHash]  = true;
+            self::$pending[$table]['rows'][]   = $dataInsert;
+            self::$pending[$table]['pkCols'][] = array_keys($primaryKey);
             return;
         }
 
@@ -126,12 +188,25 @@ abstract class BigmapDataAbstract extends VssModel
 
     public function removeByPk(array $primaryKey, int $level, array $saveData = []): void
     {
-        $this->flushThisTable();
-
         $dataUpdate                 = $saveData;
         $dataUpdate['state']        = self::kSTATE_Removed;
         $dataUpdate['last_level']   = $level;
         $dataUpdate['updates']      = VssDbExp::query('updates+1');
+
+        // A single-column key is a whole bigmap (removeAllInBigmap): written at once, after what is pending
+        if (self::$batching && count($primaryKey) > 1)
+        {
+            $table = $this->tableName();
+            $this->prepareKey($primaryKey);
+
+            $group = json_encode(array_map(fn ($v) => $v instanceof VssDbExp ? 'exp:'.$v->sql : $v, $dataUpdate));
+            self::$pending[$table]['removes'][$group]['set']      = $dataUpdate;
+            self::$pending[$table]['removes'][$group]['pkCols']   = array_keys($primaryKey);
+            self::$pending[$table]['removes'][$group]['tuples'][] = $primaryKey;
+            return;
+        }
+
+        $this->flushThisTable();
 
         Vss::dbTezos()->update($this->tableName(), $dataUpdate, $primaryKey);
     }
