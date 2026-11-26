@@ -42,7 +42,7 @@ INSERT INTO `market_urls` (`market_url_id`, `button_caption`, `internal_url_suff
   ('collection/versum/verses__dc', 'Versum', '/{$MARKET_URL_ID$}', 'https://versum.xyz/collections/verses__distributed_consciousness/collection', ''),
   ('collection/versum/vessel_gen0', '', '/{$MARKET_URL_ID$}', 'https://versum.xyz/collections/vessel_gen0/collection', ''),
   ('collection/versum/ziggurats', 'Versum', '/{$MARKET_URL_ID$}', 'https://versum.xyz/collections/ziggurats/collection', ''),
-  ('contract/tezos', '', '/{$MARKET_URL_ID$}/{$ADDRESS$}', 'https://tzstats.com/{$ADDRESS$}', 'Tezos: Default contract'),
+  ('contract/tezos', '', '/{$MARKET_URL_ID$}/{$ADDRESS$}', 'https://tzkt.io/{$ADDRESS$}', 'Tezos: Default contract'),
   ('token/8bidou', '8bidou', '/{$MARKET_URL_ID$}/{$TOKEN_ID$}', 'https://ui.8bidou.com/item/?id={$TOKEN_ID$}', ''),
   ('token/8bidou-24mono', '8bidou', '/{$MARKET_URL_ID$}/{$TOKEN_ID$}', 'https://ui.8bidou.com/item_g/?id={$TOKEN_ID$}', ''),
   ('token/8bidou-24rgb', '8bidou', '/{$MARKET_URL_ID$}/{$TOKEN_ID$}', 'https://ui.8bidou.com/item_r/?id={$TOKEN_ID$}', ''),
