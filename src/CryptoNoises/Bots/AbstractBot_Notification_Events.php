@@ -1225,11 +1225,13 @@ trait AbstractBot_Notification_Events
 
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-        $hashes = $eventItem['transaction_hash'] ?? null;
+        // Grouped events carry several hashes and no counter
+        $hashes  = $eventItem['transaction_hash'] ?? null;
+        $counter = isset($eventItem['transaction_counter']) ? (int) $eventItem['transaction_counter'] : null;
         if (is_string($hashes) && str_starts_with($hashes, '['))
-            $hashes = json_decode($hashes, true);
+            [$hashes, $counter] = [json_decode($hashes, true), null];
         $notification->addTransactionLinks(array_map(
-            fn ($hash) => is_string($hash) ? $network->getTransactionPublicUrl($hash) : null, (array) $hashes));
+            fn ($hash) => is_string($hash) ? $network->getTransactionPublicUrl($hash, $counter) : null, (array) $hashes));
 
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 

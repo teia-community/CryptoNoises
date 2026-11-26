@@ -50,7 +50,7 @@ abstract class AbstractNetwork
 
     abstract public function getAddressPublicUrl(string $address): string;
     abstract public function getContractPublicUrl(string $address): string;
-    abstract public function getTransactionPublicUrl(string $hash): ?string;
+    abstract public function getTransactionPublicUrl(string $hash, ?int $counter = null): ?string;
 
     abstract public function getTokenCollectionUrl(string $contract): string;
     abstract public function getTokenDefaultDetailsUrl(string $contract, string $tokenId): ?string;
