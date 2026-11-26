@@ -71,6 +71,30 @@ class AnalyzeBigmapUpdates
         }
     }
 
+    /** @var array<int, array> ptr => TzKT definition, fetched a page at a time ahead of need, per process */
+    private static array $definitions = [];
+    const kDEFINITIONS_PAGE = 1000;
+
+    /**
+     * A bigmap's TzKT definition. Bigmaps are allocated in pointer order, so a missing one is fetched together with the
+     * next kDEFINITIONS_PAGE: one request instead of one per allocation. Falls back to the single request.
+     */
+    private static function BigmapDefinition(int $bigmap): ?array
+    {
+        if (!isset(self::$definitions[$bigmap]))
+        {
+            if (count(self::$definitions) > 10 * self::kDEFINITIONS_PAGE)
+                self::$definitions = [];
+
+            self::$definitions += Tzkt::GetBigmapDetailsFrom($bigmap, self::kDEFINITIONS_PAGE) ?? [];
+        }
+
+        $definition = self::$definitions[$bigmap] ?? Tzkt::GetBigmapDetails($bigmap);
+        unset(self::$definitions[$bigmap]);
+
+        return $definition;
+    }
+
     public function getLastErrorMessage(): ?string
     {
         return $this->lastErrorMessage;
@@ -105,7 +129,7 @@ class AnalyzeBigmapUpdates
         if ($bigmapItem !== null)
             return $bigmapItem;
 
-        $bigmapData = Tzkt::GetBigmapDetails($bigmap);
+        $bigmapData = self::BigmapDefinition($bigmap);
 
         if ($bigmapData === null)
             throw new Exception('Cannot get bigmap data from tzkt');

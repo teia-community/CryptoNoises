@@ -157,6 +157,21 @@ class Tzkt extends AbstractVendor
         return $result->isSuccess() ? $result->data : null;
     }
 
+    /**
+     * Definitions of the bigmaps from $fromPtr up, in pointer order: ptr => the same object GetBigmapDetails() gives.
+     * /bigmaps has no pointer filter (ptr, ptr.in and ptr.ge are silently ignored), so this pages by cursor on ptr.
+     * Null when TzKT did not answer.
+     */
+    public static function GetBigmapDetailsFrom(int $fromPtr, int $limit = 1000): ?array
+    {
+        $result = self::GetDataJson(self::api()."/bigmaps?sort.asc=ptr&offset.cr=".($fromPtr - 1)."&limit=$limit");
+
+        if (!$result->isSuccess() || !is_array($result->data))
+            return null;
+
+        return array_column($result->data, null, 'ptr');
+    }
+
     //------------------------------------------------------------------------------------------------------------------
 
     public static function GetContractStorageData(string $contract): ?array
