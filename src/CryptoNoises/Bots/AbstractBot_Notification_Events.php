@@ -1225,6 +1225,14 @@ trait AbstractBot_Notification_Events
 
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+        $hashes = $eventItem['transaction_hash'] ?? null;
+        if (is_string($hashes) && str_starts_with($hashes, '['))
+            $hashes = json_decode($hashes, true);
+        $notification->addTransactionLinks(array_map(
+            fn ($hash) => is_string($hash) ? $network->getTransactionPublicUrl($hash) : null, (array) $hashes));
+
+        // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
         $notification->bindDebugClassName()
             ->bindDebugArray('eventItem',                   $eventItem,                 'event_flow_id')
             ->bindDebugArray('notificationItem',            $notificationItem,          'event_notification_id')

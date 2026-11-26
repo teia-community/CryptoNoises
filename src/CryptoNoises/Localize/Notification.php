@@ -360,6 +360,34 @@ abstract class Notification
         return $this;
     }
 
+    /** Appends a line linking the operation(s) on an explorer; grouped events carry several hashes */
+    public function addTransactionLinks(array $urls, int $max = 5): self
+    {
+        $urls = array_values(array_unique(array_filter($urls)));
+        if (empty($urls))
+            return $this;
+
+        $link = fn (string $caption, string $url) => self::IsTelegram()
+            ? '<a href="'.htmlspecialchars($url, ENT_QUOTES).'">'.$caption.'</a>'
+            : '['.$caption.']('.$url.')';
+
+        if (count($urls) == 1)
+        {
+            $line = '🔗 '.$link('Transaction', $urls[0]);
+        }
+        else
+        {
+            $links = [];
+            foreach (array_slice($urls, 0, $max) as $i => $url)
+                $links[] = $link((string) ($i + 1), $url);
+
+            $line = '🔗 Transactions: '.join(' · ', $links).(count($urls) > $max ? ' +'.(count($urls) - $max) : '');
+        }
+
+        $this->description[] = $line;
+        return $this;
+    }
+
     public function prependButtonsAsRows(array $buttons, int $rowLength): self
     {
         $rows = [];
