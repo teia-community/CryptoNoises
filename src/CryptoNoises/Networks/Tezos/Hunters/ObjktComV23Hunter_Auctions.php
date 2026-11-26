@@ -60,19 +60,22 @@ class ObjktComV23Hunter_Auctions extends ObjktComV23Hunter
 
             if ($recInit['target'] == $this->kEnglishAuctionsKTID)
             {
-                if (!isset($recValue['currency']['fa12']) || $recValue['currency']['fa12'] != self::kWrapperKTID) {
-                    Log::Error(get_class($this), __FUNCTION__, "Bad english-auction currency", $recInit);
+                $currency = $recValue['currency']['fa12'] ?? null;
+
+                if (!is_string($currency) || !$this->isSupportedCurrencyToken($currency)) {
+                    Log::Warning(get_class($this), __FUNCTION__, "Unsupported english-auction currency", $recInit);
                     return false;
                 }
 
                 $event->price                   = $recValue['reserve'];
-                $event->currency_address        = $recValue['currency']['fa12'];
+                $event->currency_address        = $currency;
                 $event->quantity                = 1;
             }
             else if($recInit['target'] == $this->kDutchAuctionsKTID)
             {
+                // Only tez is handled for buys; the few token-priced dutch auctions are skipped
                 if (!isset($recValue['currency']['tez'])) {
-                    Log::Error(get_class($this), __FUNCTION__, "Bad dutch-auction currency", $recInit);
+                    Log::Warning(get_class($this), __FUNCTION__, "Unsupported dutch-auction currency", $recInit);
                     return false;
                 }
 
@@ -212,7 +215,7 @@ class ObjktComV23Hunter_Auctions extends ObjktComV23Hunter
             $event->royalty_address         = $auctionDetails->creator;
 
             $event->price                   = $recCurrentValue['value'];
-            $event->currency_address        = self::kWrapperKTID;
+            $event->currency_address        = $this->auctionCurrency($recCurrentBid);
 
             $event->marketplace_address     = $recInit['target'];
             $event->token_address           = $auctionDetails->tokenAddress;
@@ -240,7 +243,7 @@ class ObjktComV23Hunter_Auctions extends ObjktComV23Hunter
                 $event->royalty_address         = $auctionDetails->creator;
 
                 $event->price                   = $recPreviousValue['value'];
-                $event->currency_address        = self::kWrapperKTID;
+                $event->currency_address        = $this->auctionCurrency($recPreviousBid);
 
                 $event->marketplace_address     = $recInit['target'];
                 $event->token_address           = $auctionDetails->tokenAddress;
@@ -370,7 +373,7 @@ class ObjktComV23Hunter_Auctions extends ObjktComV23Hunter
                 $event->fee                     = $recStore['parameter']['value']['value'];
                 $event->price                   = $event->revenue + $event->royalty + $event->fee;
 
-                $event->currency_address        = self::kWrapperKTID;
+                $event->currency_address        = $this->auctionCurrency($recRevenue);
                 $event->quantity                = $transfer->quantity;
 
                 $event->marketplace_address     = $recInit['target'];
@@ -494,6 +497,17 @@ class ObjktComV23Hunter_Auctions extends ObjktComV23Hunter
         }
 
         return null;
+    }
+
+    /** English auctions pay in an FA1.2 token: the contract its transfer calls */
+    private function auctionCurrency(?array $record): string
+    {
+        $currency = $record['target'] ?? null;
+
+        if (!is_string($currency) || !$this->isSupportedCurrencyToken($currency))
+            throw new Exception("Unsupported english-auction currency");
+
+        return $currency;
     }
 
     private function extractRecordWithReceiverAddress_englishAuction(array &$records, string $address): ?array
