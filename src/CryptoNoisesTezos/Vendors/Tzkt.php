@@ -61,12 +61,17 @@ class Tzkt extends AbstractVendor
      * Why TzKT cannot be trusted to be at the chain's head right now, or null when it can: its indexer reports it is
      * not synced, or its head block is more than $maxAgeSec old - a stalled TzKT still answers, with old data.
      */
+    // TzKT reports synced: false for a moment whenever its node has a block it has not indexed yet
+    const kMAX_SYNC_LAG_LEVELS = 10;
+
     public static function NotAtHeadReason(?array $state, int $maxAgeSec = 180): ?string
     {
         if ($state === null)
             return 'TzKT did not answer';
 
-        if (isset($state['synced']) && $state['synced'] === false)
+        $lag = (int) ($state['knownLevel'] ?? 0) - (int) $state['level'];
+
+        if (isset($state['synced']) && $state['synced'] === false && $lag > self::kMAX_SYNC_LAG_LEVELS)
             return "TzKT is not synced (level {$state['level']}, its node knows {$state['knownLevel']})";
 
         $age = time() - strtotime($state['timestamp'] ?? '');

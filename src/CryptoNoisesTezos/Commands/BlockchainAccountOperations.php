@@ -42,6 +42,9 @@ class BlockchainAccountOperations extends AbstractCommand
         {
             $this->logErr("ERROR: " . $e->getMessage());
 
+            // A stage that exits at once on an error restarts in a tight loop until the error is resolved
+            sleep(30);
+
             // An error ends the process and "restart: always" starts it again at once: without a pause, an error
             // that persists (a level marked "error" waits for a human) turns into a restart loop
             sleep(self::kERROR_PAUSE_SEC);
