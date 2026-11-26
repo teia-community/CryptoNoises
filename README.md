@@ -505,9 +505,9 @@ ALTER TABLE options_notifier ADD COLUMN notify_teia_governance enum('yes','no') 
 ## Matrix bot
 
 A third messenger, notifications first: the same event and info notifications as on Telegram, in a direct message,
-managed with a few text commands - `!add tz1… [name]`, `!wallets`, `!summary`, `!remove`, `!stop` (pause; any message
-resumes), `!help`. A bare Tezos address is taken as `!add`. Settings such as thresholds and notification types are
-not on Matrix yet: they are menus of buttons on Telegram and Discord, and Matrix clients have no bot buttons.
+managed with text commands - `!add tz1… [name]`, `!wallets`, `!summary`, `!remove`, `!stop` (pause; any message
+resumes), `!help`, and `!settings` for the user-level settings (`!on`/`!off <type>`, `!digest`, `!threshold`,
+`!reminder`, `!attestations`). A bare Tezos address is taken as `!add`. Per-wallet filters stay on Telegram and Discord.
 
 ```sh
 # .env: MATRIX_USER=@bot:example.org  MATRIX_PASSWORD=...  MATRIX_HOMESERVER_URL=https://matrix.example.org
