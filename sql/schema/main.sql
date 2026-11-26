@@ -131,6 +131,7 @@ CREATE TABLE IF NOT EXISTS `events_flow` (
   `custom_data` text DEFAULT NULL,
   PRIMARY KEY (`event_flow_id`),
   UNIQUE KEY `network_id` (`network_id`,`network_block`,`event_type`,`entity_uid`,`entity_subid`),
+  KEY `entity_uid` (`entity_uid`,`entity_subid`),
   KEY `event_type` (`event_type`),
   KEY `ts_event` (`ts_event`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
