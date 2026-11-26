@@ -37,6 +37,10 @@ class Profiles_Tzkt extends AbstractHunter
         $this->addressList[] = $address;
     }
 
+    // adid => when it was last checked, per process: an address in every block need not be checked every block
+    private static array $checkedAt = [];
+    const kRECHECK_SEC = 3600;
+
     public function finalize(): void
     {
         $addressList = array_unique($this->addressList);
@@ -45,8 +49,13 @@ class Profiles_Tzkt extends AbstractHunter
         {
             $profileAdid = TezosAddress::GetOrCreateAdid($address);
 
-            if ($profileAdid === null)
+            if ($profileAdid === null || time() - (self::$checkedAt[$profileAdid] ?? 0) < self::kRECHECK_SEC)
                 continue;
+
+            if (count(self::$checkedAt) >= 200000)
+                self::$checkedAt = [];
+
+            self::$checkedAt[$profileAdid] = time();
 
             $secondsGone = Models\ProfilesTzkt::model()->getSecondsSinceLastUpdate($profileAdid);
 

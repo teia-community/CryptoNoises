@@ -95,19 +95,40 @@ abstract class FixerAbstract extends \CryptoCore\Models\FixerAbstract
      * First successfully synced level in [$levelFrom .. $levelTo] that has items (null = all of them are empty).
      * Lets the analyzers jump over empty levels instead of visiting them one by one.
      */
+    // The next levels with items, fetched kNEXT_LEVELS_BATCH at a time: the transaction analyzer asks once per level
+    private array $nextLevels = [];
+    private int $nextFrom = 0;
+    private int $nextCoveredTo = -1;
+    const kNEXT_LEVELS_BATCH = 1000;
+
     public function getNextLevelWithItems(int $levelFrom, int $levelTo): ?int
     {
-        $level = Vss::dbTezos()->queryScalar("
+        if ($levelFrom >= $this->nextFrom && $levelFrom <= $this->nextCoveredTo)
+        {
+            while ($this->nextLevels && $this->nextLevels[0] < $levelFrom)
+                array_shift($this->nextLevels);
+
+            if ($this->nextLevels)
+                return $this->nextLevels[0] <= $levelTo ? $this->nextLevels[0] : null;
+
+            if ($this->nextCoveredTo >= $levelTo)
+                return null;
+        }
+
+        $levels = Vss::dbTezos()->queryColumn("
             SELECT level
             FROM {$this->tableName()}
             WHERE level BETWEEN :level_from AND :level_to
               AND state = :state_success
               AND items_count > 0
             ORDER BY level
-            LIMIT 1
-        ", ['level_from' => $levelFrom, 'level_to' => $levelTo, 'state_success' => self::kSTATE_Success]);
+            LIMIT ".self::kNEXT_LEVELS_BATCH, ['level_from' => $levelFrom, 'level_to' => $levelTo, 'state_success' => self::kSTATE_Success]);
 
-        return $level === null || $level === false ? null : (int) $level;
+        $this->nextLevels    = array_map('intval', $levels);
+        $this->nextFrom      = $levelFrom;
+        $this->nextCoveredTo = count($levels) == self::kNEXT_LEVELS_BATCH ? (int) end($levels) : $levelTo;
+
+        return $this->nextLevels[0] ?? null;
     }
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
