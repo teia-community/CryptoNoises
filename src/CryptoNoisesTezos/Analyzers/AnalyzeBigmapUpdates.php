@@ -13,10 +13,16 @@ class AnalyzeBigmapUpdates
 {
     private ?string $lastErrorMessage = null;
 
+    /** Multi-row writes of the bigmap data tables (BigmapDataAbstract); off = one statement per update */
+    public static bool $batchWrites = true;
+
     public function analyze(int $level): ?int
     {
         Vss::dbTezos()->transactionBegin();
         Vss::dbTezosLog()->transactionBegin();
+
+        if (self::$batchWrites)
+            Models\BigmapDataAbstract::BeginBatch();
 
         try
         {
@@ -45,6 +51,9 @@ class AnalyzeBigmapUpdates
                 }
             }
 
+            Models\BigmapDataAbstract::FlushBatch();
+            Models\BigmapDataAbstract::EndBatch();
+
             Vss::dbTezos()->transactionCommit();
             Vss::dbTezosLog()->transactionCommit();
 
@@ -52,6 +61,8 @@ class AnalyzeBigmapUpdates
         }
         catch (Exception $e)
         {
+            Models\BigmapDataAbstract::EndBatch();
+
             Vss::dbTezos()->transactionRollback();
             Vss::dbTezosLog()->transactionRollback();
 

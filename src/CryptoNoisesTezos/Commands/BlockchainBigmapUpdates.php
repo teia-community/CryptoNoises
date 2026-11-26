@@ -6,6 +6,7 @@ use CryptoNoisesTezos\Analyzers;
 use CryptoNoisesTezos\Config;
 use CryptoNoisesTezos\Models;
 use CryptoNoisesTezos\Syncs;
+use CryptoNoisesTezos\Vendors;
 use CryptoCore\Process\Shutdown;
 use CryptoCore\Time;
 use CryptoCore\Vss\Vss;
@@ -67,6 +68,24 @@ class BlockchainBigmapUpdates extends AbstractCommand
         }
     }
 
+    // sync-check downloads a level again and compares counts, to catch a recent level that changed after it was
+    // synced. Levels further than this below the chain head (~17 h) are final and are not re-downloaded.
+    const kCHECK_WINDOW_LEVELS = 10000;
+
+    private ?int $chainHead = null;
+    private int $chainHeadAt = 0;
+
+    private function chainHead(): ?int
+    {
+        if ($this->chainHead === null || time() - $this->chainHeadAt > 60)
+        {
+            $this->chainHead   = Vendors\Tzkt::GetBlockLastIndex() ?? $this->chainHead;
+            $this->chainHeadAt = time();
+        }
+
+        return $this->chainHead;
+    }
+
     public function syncCheck(): void
     {
         $tsStart = Time::Microtime();
@@ -116,6 +135,16 @@ class BlockchainBigmapUpdates extends AbstractCommand
                 }
 
                 $level = $jobToSync['level'];
+
+                // Only recent levels are worth a second download; older ones are marked in bulk
+                $head = $this->chainHead();
+
+                if ($head !== null && $level < $head - self::kCHECK_WINDOW_LEVELS)
+                {
+                    $marked = Models\FixerBigmapUpdatesSync::model()->markOldLevelsChecked($threadId, (int) $level, $head - self::kCHECK_WINDOW_LEVELS);
+                    $this->logMsg("Marked $marked old level(s) as checked");
+                    continue;
+                }
 
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 

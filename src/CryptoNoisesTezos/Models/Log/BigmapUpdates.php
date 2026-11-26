@@ -100,4 +100,47 @@ class BigmapUpdates extends VssModel
     {
         Vss::dbTezosLog()->delete($this->tableName($level), ['level' => $level]);
     }
+
+    // Batch versions, one statement per log table (a level range can straddle a table boundary)
+
+    /** @param int[] $levels */
+    public function cleanUpLevels(array $levels): void
+    {
+        foreach ($this->groupByTable($levels) as $tableName => $tableLevels)
+            Vss::dbTezosLog()->query("DELETE FROM $tableName WHERE level IN (".join(',', $tableLevels).")");
+    }
+
+    /** @param array[] $rows rows as insert() takes them, each carrying its own 'level' */
+    public function insertMany(array $rows): void
+    {
+        $byTable = [];
+
+        foreach ($rows as $row)
+            $byTable[$this->tableName((int) $row['level'])][] = $row;
+
+        foreach ($byTable as $tableName => $tableRows)
+            Vss::dbTezosLog()->insertMany($tableName, $tableRows, 'IGNORE');
+    }
+
+    /** @return array<int, int> level => rows stored, 0 for levels without rows */
+    public function getItemsCountInBlocks(array $levels): array
+    {
+        $result = array_fill_keys(array_map('intval', $levels), 0);
+
+        foreach ($this->groupByTable($levels) as $tableName => $tableLevels)
+            foreach (Vss::dbTezosLog()->query("SELECT level, COUNT(*) AS n FROM $tableName WHERE level IN (".join(',', $tableLevels).") GROUP BY level") ?: [] as $row)
+                $result[(int) $row['level']] = (int) $row['n'];
+
+        return $result;
+    }
+
+    private function groupByTable(array $levels): array
+    {
+        $byTable = [];
+
+        foreach ($levels as $level)
+            $byTable[$this->tableName((int) $level)][] = (int) $level;
+
+        return $byTable;
+    }
 }

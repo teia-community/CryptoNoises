@@ -48,10 +48,21 @@ abstract class FixerAbstract extends VssModel
         return $this->dbConnection()->queryRow($sql, ['state_success' => self::kSTATE_Success]);
     }
 
+    private ?int $lastSuccessLevel = null;
+    private float $lastSuccessReadAt = 0;
+
+    /** Cached for a second: other stages ask before every level, and a second-old answer only makes them cautious */
     public function getLastSuccessLevelIndex(): ?int
     {
+        if ($this->lastSuccessLevel !== null && microtime(true) - $this->lastSuccessReadAt < 1)
+            return $this->lastSuccessLevel;
+
         $jobItem = $this->getLastSuccessJobItem();
-        return $jobItem ? $jobItem['level'] : null;
+
+        $this->lastSuccessLevel  = $jobItem ? (int) $jobItem['level'] : null;
+        $this->lastSuccessReadAt = microtime(true);
+
+        return $this->lastSuccessLevel;
     }
 
     /**

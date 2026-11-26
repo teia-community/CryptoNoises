@@ -38,11 +38,26 @@ class TezosAddress
         return $item ? $item['address'] : null;
     }
 
+    // address => adid, per process: an adid never changes, and the analyzers look the same addresses up constantly
+    private static array $adids = [];
+    const kADID_CACHE_MAX = 200000;
+
+    private static function Remember(string $address, int $adid): int
+    {
+        if (count(self::$adids) >= self::kADID_CACHE_MAX)
+            self::$adids = [];
+
+        return self::$adids[$address] = $adid;
+    }
+
     public static function GetAdidByAddress(string $address): ?int
     {
+        if (isset(self::$adids[$address]))
+            return self::$adids[$address];
+
         $item = Models\Address::model()->getItemByAddress($address);
 
-        return $item ? $item['adid'] : null;
+        return $item ? self::Remember($address, (int) $item['adid']) : null;
     }
 
     private static function GetOrCreateItem(?string $address): ?array
@@ -65,7 +80,10 @@ class TezosAddress
         if (empty($address))
             return null;
 
+        if (isset(self::$adids[$address]))
+            return self::$adids[$address];
+
         $item = self::GetOrCreateItem($address);
-        return $item['adid'];
+        return $item ? self::Remember($address, (int) $item['adid']) : null;
     }
 }
