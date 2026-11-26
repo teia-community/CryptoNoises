@@ -80,7 +80,28 @@ class VssDb
     protected function exec($sql, $rules = null)
     {
         $this->open();
-        return $this->dbc->exec($sql, $rules);
+
+        try
+        {
+            return $this->dbc->exec($sql, $rules);
+        }
+        catch (\PDOException $e)
+        {
+            // The server went away (restarted, or the db container recreated with a new address): reconnect once.
+            // Not inside a transaction, which is lost with the connection, and only when the statement never ran.
+            if ($this->transactionState !== self::kTRANSACTION_STATE_Idle || !self::IsServerGone($e))
+                throw $e;
+
+            $this->close();
+            $this->open();
+
+            return $this->dbc->exec($sql, $rules);
+        }
+    }
+
+    private static function IsServerGone(\PDOException $e): bool
+    {
+        return ($e->errorInfo[1] ?? null) === 2006 || str_contains($e->getMessage(), 'server has gone away');
     }
 
     //------------------------------------------------------------------------------------------------------------------
