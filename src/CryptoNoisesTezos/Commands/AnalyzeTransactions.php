@@ -28,60 +28,70 @@ class AnalyzeTransactions extends AbstractCommand
 
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-        $levelsSinceReconnect = 0;
-        $progress = new ProgressLog('analyze transactions');
-
-        while (true)
+        try
         {
-            if (Time::Microtime() - $tsStart > Config::runTimeLimit() || Shutdown::Requested())
-                break;
+            $levelsSinceReconnect = 0;
+            $progress = new ProgressLog('analyze transactions');
 
-            $lastSyncedLevel = (int) Models\Config::model()->getValue('TezosAnalyzer.LastSyncedLevel');
-            $lastFullySyncedLevel = Analyzers\AnalyzeHelper::GetLastFullySyncedBlock();
-
-            if ($lastFullySyncedLevel === null)
+            while (true)
             {
-                $this->logErr('Cannot detect $lastFullySyncedLevel value');
-                sleep(1);
-                continue;
+                if (Time::Microtime() - $tsStart > Config::runTimeLimit() || Shutdown::Requested())
+                    break;
+
+                $lastSyncedLevel = (int) Models\Config::model()->getValue('TezosAnalyzer.LastSyncedLevel');
+                $lastFullySyncedLevel = Analyzers\AnalyzeHelper::GetLastFullySyncedBlock();
+
+                if ($lastFullySyncedLevel === null)
+                {
+                    $this->logErr('Cannot detect $lastFullySyncedLevel value');
+                    sleep(1);
+                    continue;
+                }
+
+                // Every path below starts here, so one call covers analyzing, skipping empty levels and idling
+                $progress->report($lastSyncedLevel, $lastFullySyncedLevel, 'synced');
+
+                if ($lastSyncedLevel >= $lastFullySyncedLevel)
+                {
+                    $this->logMsg("Sleep for 1 sec");
+                    sleep(1);
+                    continue;
+                }
+
+                // Levels without transactions need no analysis: jump to the next level that has some
+                $level = Models\FixerTransactionsSync::model()->getNextLevelWithItems($lastSyncedLevel + 1, $lastFullySyncedLevel);
+
+                if ($level === null)
+                {
+                    Models\Config::model()->setValue('TezosAnalyzer.LastSyncedLevel', $lastFullySyncedLevel);
+                    continue;
+                }
+
+                $this->logMsg("Sync #$level");
+
+                $analyzer = new Analyzers\AnalyzeTransactions();
+                $analyzer->verbose = $this->verbose;
+                $analyzer->analyze($level);
+
+                Vss::dbTezos()->transactionBegin();
+                Models\Config::model()->setValue('TezosAnalyzer.LastSyncedLevel', $level);
+                Vss::dbTezos()->transactionCommit();
+
+                // Reconnect now and then, not per level: during a catch-up thousands of levels per second would
+                // exhaust the local TCP ports with TIME_WAIT sockets
+                if (++$levelsSinceReconnect >= self::kRECONNECT_EVERY_LEVELS)
+                {
+                    Vss::dbCloseAll();
+                    $levelsSinceReconnect = 0;
+                }
             }
+        }
+        catch (\Exception $e)
+        {
+            $this->logErr("ERROR: " . $e->getMessage());
 
-            // Every path below starts here, so one call covers analyzing, skipping empty levels and idling
-            $progress->report($lastSyncedLevel, $lastFullySyncedLevel, 'synced');
-
-            if ($lastSyncedLevel >= $lastFullySyncedLevel)
-            {
-                $this->logMsg("Sleep for 1 sec");
-                sleep(1);
-                continue;
-            }
-
-            // Levels without transactions need no analysis: jump to the next level that has some
-            $level = Models\FixerTransactionsSync::model()->getNextLevelWithItems($lastSyncedLevel + 1, $lastFullySyncedLevel);
-
-            if ($level === null)
-            {
-                Models\Config::model()->setValue('TezosAnalyzer.LastSyncedLevel', $lastFullySyncedLevel);
-                continue;
-            }
-
-            $this->logMsg("Sync #$level");
-
-            $analyzer = new Analyzers\AnalyzeTransactions();
-            $analyzer->verbose = $this->verbose;
-            $analyzer->analyze($level);
-
-            Vss::dbTezos()->transactionBegin();
-            Models\Config::model()->setValue('TezosAnalyzer.LastSyncedLevel', $level);
-            Vss::dbTezos()->transactionCommit();
-
-            // Reconnect now and then, not per level: during a catch-up thousands of levels per second would
-            // exhaust the local TCP ports with TIME_WAIT sockets
-            if (++$levelsSinceReconnect >= self::kRECONNECT_EVERY_LEVELS)
-            {
-                Vss::dbCloseAll();
-                $levelsSinceReconnect = 0;
-            }
+            // A stage that exits at once on an error restarts in a tight loop until the error is resolved
+            sleep(30);
         }
 
         $this->logMsg("Done");

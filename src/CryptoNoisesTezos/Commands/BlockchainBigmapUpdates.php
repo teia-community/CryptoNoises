@@ -37,6 +37,9 @@ class BlockchainBigmapUpdates extends AbstractCommand
         catch (Exception $e)
         {
             $this->logErr("ERROR: " . $e->getMessage());
+
+            // A stage that exits at once on an error restarts in a tight loop until the error is resolved
+            sleep(30);
         }
     }
 
