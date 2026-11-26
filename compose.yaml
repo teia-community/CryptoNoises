@@ -70,6 +70,8 @@ services:
       - --innodb-flush-log-at-trx-commit=2
       - --skip-log-bin
       - --innodb-buffer-pool-size=${MYSQL_BUFFER_POOL_SIZE:-2G}
+      # Redo log room for write-heavy stretches (catch-up, bulk copies); the 100M default stalls writes on checkpoints
+      - --innodb-redo-log-capacity=${MYSQL_REDO_LOG_CAPACITY:-2G}
       - --max-connections=${MYSQL_MAX_CONNECTIONS:-200}
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD is required}

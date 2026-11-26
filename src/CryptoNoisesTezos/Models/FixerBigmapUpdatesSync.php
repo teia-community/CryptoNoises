@@ -43,6 +43,21 @@ class FixerBigmapUpdatesSync extends FixerAbstract
         return Vss::dbTezos()->queryRow($sql, ['offset' => $offset]);
     }
 
+    /**
+     * Marks levels below $belowLevel as checked against their own count, without asking TzKT: levels synced long
+     * after they were final cannot change, so re-downloading them (during a catch-up: the whole history) is waste.
+     * @return int levels marked
+     */
+    public function markOldLevelsChecked(int $threadId, int $fromLevel, int $belowLevel, int $span = 20000): int
+    {
+        $field = 'items_count_check'.$threadId;
+
+        // A primary-key range, not ORDER BY ... LIMIT on the check index, which scanned for seconds per call
+        return (int) Vss::dbTezos()->query("UPDATE {$this->tableName()} SET $field = items_count
+            WHERE level >= :from AND level < :to AND $field IS NULL AND state = :success",
+            ['from' => $fromLevel, 'to' => min($belowLevel, $fromLevel + $span), 'success' => self::kSTATE_Success]);
+    }
+
     public function fixRecordsCountOnCheck(int $threadId, int $level, int $recordsCount): void
     {
         Vss::dbTezos()->update($this->tableName(),
