@@ -218,6 +218,11 @@ class TezosNetwork extends AbstractNetwork
         return URL::InnerRedirectToContract($marketUrlItem, $address);
     }
 
+    public function getTransactionPublicUrl(string $hash): ?string
+    {
+        return preg_match('/^o[1-9A-HJ-NP-Za-km-z]{50}$/', $hash) ? 'https://tzkt.io/'.$hash : null;
+    }
+
     public function getTokenCollectionUrl(string $contract): string
     {
         $marketUrlItem = Models\Shared\MarketUrls::model()->getItemById(Models\Shared\MarketUrls::kDefaultTezos_Collection);
