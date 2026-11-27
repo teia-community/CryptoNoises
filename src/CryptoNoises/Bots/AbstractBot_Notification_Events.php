@@ -182,7 +182,7 @@ trait AbstractBot_Notification_Events
         else if ($notificationType == Enum\NotificationType::TokenOffer)
         {
             $notifyFilter   = OptionsNotifier::kNotify_TokenOffer;
-            $notification   = $eventItem['currency_address'] !== null
+            $notification   = $eventItem['currency_address'] !== null && !self::IsWrappedXtz($eventItem['currency_address'])
                 ? Notification\Transaction\NftOffer_InTokens::I($user)
                 : Notification\Transaction\NftOffer_InCoins::I($user);
             $thresholdScope = OptionsNotifier::kThresholdOffer;
@@ -190,7 +190,7 @@ trait AbstractBot_Notification_Events
         else if ($notificationType == Enum\NotificationType::CollectionOffer)
         {
             $notifyFilter   = OptionsNotifier::kNotify_TokenOffer;
-            $notification   = $eventItem['currency_address'] !== null
+            $notification   = $eventItem['currency_address'] !== null && !self::IsWrappedXtz($eventItem['currency_address'])
                 ? Notification\Transaction\CollectionOffer_InTokens::I($user)
                 : Notification\Transaction\CollectionOffer_InCoins::I($user);
             $thresholdScope = OptionsNotifier::kThresholdOffer;
@@ -932,7 +932,8 @@ trait AbstractBot_Notification_Events
             if ($amountInCoins === null)
             {   // same values as for coins, but in tokens
                 $notification->bind('{###AMOUNT_TOTAL###}',             Notification::SafeText($amountInTokenEntity->getFriendlyCoinsAmount()));
-                $notification->bind('{###AMOUNT_TOTAL_CONVERTED###}',   '');
+                $notification->bind('{###AMOUNT_TOTAL_CONVERTED###}',   $coinsExchanger && $amountInTokenEntity->isWrappedXtz()
+                    ? $coinsExchanger->convertToString($amountInTokenEntity->amount) : '');
 
                 $notification->bind('{###QUANTITY###}',                 Notification::HIDE_ME);
             }
@@ -970,7 +971,8 @@ trait AbstractBot_Notification_Events
             else if ($fullPriceInTokenEntity)
             {
                 $notification->bind('{###FULL_SELL_PRICE###}',              Notification::SafeText($fullPriceInTokenEntity->getFriendlyCoinsAmount()));
-                $notification->bind('{###FULL_SELL_PRICE_CONVERTED###}',    '');
+                $notification->bind('{###FULL_SELL_PRICE_CONVERTED###}',    $coinsExchanger && $fullPriceInTokenEntity->isWrappedXtz()
+                    ? $coinsExchanger->convertToString($fullPriceInTokenEntity->amount) : '');
             }
             else
                 throw new NotificationSendFailedException('Cannot detect full-sell-price for royalty notification');
@@ -1025,7 +1027,8 @@ trait AbstractBot_Notification_Events
                 if ($amountInTokenEntity)
                 {
                     $notification->bind('{###AMOUNT_TOP_BID###}',           Notification::SafeText($amountInTokenEntity->getFriendlyCoinsAmount($topBid)));
-                    $notification->bind('{###AMOUNT_TOP_BID_CONVERTED###}', Notification::HIDE_ME);
+                    $notification->bind('{###AMOUNT_TOP_BID_CONVERTED###}', $coinsExchanger && $amountInTokenEntity->isWrappedXtz()
+                        ? $coinsExchanger->convertToString($topBid) : Notification::HIDE_ME);
                 }
                 else
                 {
@@ -1257,6 +1260,12 @@ trait AbstractBot_Notification_Events
      * @return Token
      * @throws NotificationSendFailedException
      */
+    /** Offers in oXTZ use the XTZ layout, with the converted amount */
+    private static function IsWrappedXtz(string $currencyAddress): bool
+    {
+        return explode(':', $currencyAddress)[0] == \CryptoCore\Setapp\ObjktCom::TokenKTID_oXTZ;
+    }
+
     private function getTokenCoinEntity(string $networkId, string $tokenAddressWithTokenId): Token
     {
         // Extract tokenId from address like 'ADDRESS:tokenId'
@@ -1269,7 +1278,7 @@ trait AbstractBot_Notification_Events
         if ($token === null)
             throw new NotificationSendFailedException("Cannot detect token-entity #$tokenAddressWithTokenId");
 
-        return $token;
+        return $token->fillKnownCurrency();
     }
 
     /**
