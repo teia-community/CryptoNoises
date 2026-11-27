@@ -21,6 +21,28 @@ class Wallets extends VssModel
         return 'wallets';
     }
 
+    /** Seconds the watched-wallet statuses may be reused within this process; 0 (the default) always reads */
+    public static int $statusCacheSec = 0;
+
+    private static ?array $statuses = null;
+    private static int $statusesAt = 0;
+
+    /** Status of a watched wallet, null when the address is not watched */
+    public function getWalletStatus(int $walletAdid): ?string
+    {
+        if (self::$statusCacheSec <= 0)
+            return $this->getWalletItem($walletAdid)['status'] ?? null;
+
+        if (self::$statuses === null || time() - self::$statusesAt > self::$statusCacheSec)
+        {
+            $rows = Vss::db()->query("SELECT wallet_adid, status FROM {$this->tableName()}");
+            self::$statuses   = array_column($rows, 'status', 'wallet_adid');
+            self::$statusesAt = time();
+        }
+
+        return self::$statuses[$walletAdid] ?? null;
+    }
+
     public function getWalletItem($walletAdid)
     {
         $sql = "

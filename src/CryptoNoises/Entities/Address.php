@@ -38,15 +38,26 @@ class Address
         return $item ? $item['adid'] : null;
     }
 
+    /** @var array<string, array> address => row; an address keeps its adid, so found rows are kept */
+    private static array $items = [];
+
     private static function GetItemByAddress(?string $address, bool $isRequireAutoCreate): ?array
     {
         if ($address === null)
             return null;
 
+        if (isset(self::$items[$address]))
+            return self::$items[$address];
+
         $item = Models\Address::model()->getItemByAddress($address);
 
         if (!empty($item))
-            return $item;
+        {
+            if (count(self::$items) > 50000)
+                self::$items = [];
+
+            return self::$items[$address] = $item;
+        }
 
         if (!$isRequireAutoCreate)
             return null;
