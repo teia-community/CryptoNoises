@@ -102,6 +102,12 @@ trait AbstractBot_Settings
         return $notification;
     }
 
+    /** Discord takes at most 5 rows of buttons in a message, so its choices share rows; the other platforms list them */
+    private static function ChoicesPerRow(): int
+    {
+        return Config::cfg()->isDiscordPlatform() ? 5 : 1;
+    }
+
     /**
      * The choices for the finalize reminder, the current one marked; a click saves it. A user-level setting: the
      * reminder is about the user's own patience, not about one wallet.
@@ -133,7 +139,7 @@ trait AbstractBot_Settings
             $buttons[] = NotificationButton::CallbackAction($title, $caBuilder->newEventAuid('finalize-reminder.set', ['value' => $key]));
         }
 
-        $notification->appendButtonsAsRows($buttons, 1);
+        $notification->appendButtonsAsRows($buttons, self::ChoicesPerRow());
 
         $notification->appendButtonsRow([
             NotificationButton::CallbackAction(Phrase::I()->actionBack, $caBuilder->newEventAuid()),
@@ -172,7 +178,7 @@ trait AbstractBot_Settings
             $buttons[] = NotificationButton::CallbackAction($title, $caBuilder->newEventAuid('missed-attestations.set', ['value' => $key]));
         }
 
-        $notification->appendButtonsAsRows($buttons, 1);
+        $notification->appendButtonsAsRows($buttons, self::ChoicesPerRow());
 
         $notification->appendButtonsRow([
             NotificationButton::CallbackAction(Phrase::I()->actionBack, $caBuilder->newEventAuid()),
@@ -202,7 +208,7 @@ trait AbstractBot_Settings
             $buttons[] = NotificationButton::CallbackAction($title, $caBuilder->newEventAuid('digest.set', ['value' => $key]));
         }
 
-        $notification->appendButtonsAsRows($buttons, 1);
+        $notification->appendButtonsAsRows($buttons, self::ChoicesPerRow());
         $notification->appendButtonsRow([NotificationButton::CallbackAction(Phrase::I()->actionBack, $caBuilder->newEventAuid())]);
 
         return $notification;
