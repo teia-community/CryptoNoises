@@ -342,7 +342,8 @@ class EventFlow
 
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-        $tokenEntity = GatewayTezos\Tokens::GetTokenDetails($this->token_address, $this->token_id, true);
+        // Only the notifications use it, and events too old to notify return before them
+        $tokenEntity = $this->isTooOldToNotify() ? null : GatewayTezos\Tokens::GetTokenDetails($this->token_address, $this->token_id, true);
 
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         // Special fixes for Address(es) values

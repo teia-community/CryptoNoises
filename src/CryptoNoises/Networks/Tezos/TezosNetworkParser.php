@@ -84,10 +84,12 @@ class TezosNetworkParser
 
         /** @var Hunters\AbstractHunter[] $hunters */
         $hunters = [];
+        $classes = [];      // short class names, for the alerts and the profiler
 
         foreach (TezosNetwork::$HunterClasses as $hunterClass)
         {
             $hunters[] = new $hunterClass($this);
+            $classes[] = substr(strrchr('\\'.$hunterClass, '\\'), 1);
         }
 
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -106,6 +108,10 @@ class TezosNetworkParser
 
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+        $this->setHunterErrorHandler();
+
+        try
+        {
         foreach ($transactionsInBlocks as $recordsBlock)
         {
             $recInit = Hunters\AbstractHunter::ExtractInitRecord($recordsBlock);
@@ -119,11 +125,12 @@ class TezosNetworkParser
             $this->debug("- analyze group with init counter=".$recInit['counter'].", hash=".$recInit['hash'], ' >> ');
 
             $found = false;
-            foreach ($hunters as $hunter)
+            foreach ($hunters as $i => $hunter)
             {
-                $this->openProfilerObject('Hunters', $hunter);
-                $result = $this->runHunter($hunter, $recInit, $recordsBlock);
-                $this->closeProfiler();
+                // Timed inline: the profiler's open/close calls cost more than most hunters
+                $time   = microtime(true);
+                $result = $this->runHunter($hunter, $classes[$i], $recInit, $recordsBlock);
+                $this->profilerData['Hunters:'.$classes[$i]] = ($this->profilerData['Hunters:'.$classes[$i]] ?? 0) + microtime(true) - $time;
 
                 if ($result)
                 {
@@ -136,15 +143,21 @@ class TezosNetworkParser
             if (!$found)
                 $this->debug('[?]');
         }
+        }
+        finally
+        {
+            restore_error_handler();
+        }
 
         return true;
     }
 
     /**
-     * A bug in one hunter must not stop the stage: its PHP warnings become exceptions, which are reported, and the
-     * operation goes on to the next hunter. Deprecations stay with the previous handler (logged, not fatal).
+     * A bug in one hunter must not stop the stage: while the hunters run, PHP warnings become exceptions, which
+     * runHunter() reports before the operation goes on to the next hunter. Deprecations stay with the previous
+     * handler (logged, not fatal). Installed once per block: per hunter call it cost a tenth of the stage's time.
      */
-    private function runHunter(object $hunter, array $recInit, array $records): bool
+    private function setHunterErrorHandler(): void
     {
         $previous = null;
         $previous = set_error_handler(function (int $level, string $text, string $file = '', int $line = 0) use (&$previous): bool
@@ -157,7 +170,10 @@ class TezosNetworkParser
 
             throw new \ErrorException($text, 0, $level, $file, $line);
         });
+    }
 
+    private function runHunter(object $hunter, string $class, array $recInit, array $records): bool
+    {
         try
         {
             return $hunter->parseTransaction($recInit, $records);
@@ -165,13 +181,8 @@ class TezosNetworkParser
         catch (\Throwable $e)
         {
             // The operation goes to the data, not the message: alerts are de-duplicated by message
-            $class = substr(strrchr('\\'.get_class($hunter), '\\'), 1);
             Log::Error($class, 'parseTransaction', $e->getMessage().' ('.basename($e->getFile()).':'.$e->getLine().')', $recInit);
             return false;
-        }
-        finally
-        {
-            restore_error_handler();
         }
     }
 
