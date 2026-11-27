@@ -136,7 +136,8 @@ abstract class AbstractHunter
                     continue;
                 }
 
-                if (TezosNetwork::IsWalletAddressValid($record['target']))
+                // The burn address counts too: some creators send their royalties there
+                if (TezosNetwork::IsWalletAddressValid($record['target']) || ($record['target'] !== null && TezosNetwork::IsWalletAddressBlocked($record['target'])))
                 {   // This is direct transfer to wallet. Save in result
                     $result[] = $record;
                     continue;
