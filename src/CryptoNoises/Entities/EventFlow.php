@@ -102,7 +102,7 @@ class EventFlow
     }
 
     /** Catching up on history: the event is recorded, but nobody is notified about it */
-    private function isTooOldToNotify(): bool
+    public function isTooOldToNotify(): bool
     {
         $maxAgeMin = \CryptoNoises\Config::cfg()->notifyMaxEventAgeMin;
         $time      = $this->transaction_event ? strtotime($this->transaction_event.' UTC') : false;

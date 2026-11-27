@@ -17,6 +17,71 @@ class EventsFlow extends VssModel
         return 'events_flow';
     }
 
+    /**
+     * While set, insert() keeps blockchain events (network_block > 0) for flushDeferred() and returns a placeholder
+     * id: for events nobody is notified about, whose id is never used. One check and one multi-row insert per block
+     * instead of two queries per event.
+     */
+    public bool $defer = false;
+
+    const kDEFERRED_ID = 1;
+
+    private array $deferred = [];
+
+    /** Drops what was kept: the block is not saved after all (an error), and will be analyzed again */
+    public function discardDeferred(): void
+    {
+        $this->deferred = [];
+    }
+
+    public function flushDeferred(): void
+    {
+        $rows = $this->deferred;
+        $this->deferred = [];
+
+        if (empty($rows))
+            return;
+
+        // The same duplicate check as insert(): an operation id + subid is one event, whatever its type. The
+        // first of repeats within the batch wins, as it would have been inserted first.
+        $existing = [];
+        $uids     = [];
+
+        foreach ($rows as $row)
+            $uids[$row['network_id']][$row['entity_uid']] = true;
+
+        foreach ($uids as $networkId => $networkUids)
+        {
+            foreach (array_chunk(array_keys($networkUids), 500) as $chunk)
+            {
+                $params = ['network_id' => $networkId];
+                foreach ($chunk as $i => $uid)
+                    $params["u$i"] = $uid;
+
+                $in = ':'.join(', :', array_keys(array_slice($params, 1, null, true)));
+
+                foreach (Vss::db()->query("SELECT entity_uid, entity_subid FROM {$this->tableName()}
+                                           WHERE network_id = :network_id AND entity_uid IN ($in) AND network_block > 0", $params) as $found)
+                    $existing["$networkId|{$found['entity_uid']}|{$found['entity_subid']}"] = true;
+            }
+        }
+
+        $new = [];
+
+        foreach ($rows as $row)
+        {
+            $key = "{$row['network_id']}|{$row['entity_uid']}|{$row['entity_subid']}";
+
+            if (isset($existing[$key]))
+                continue;
+
+            $existing[$key] = true;
+            $new[] = $row;
+        }
+
+        Vss::db()->insertMany($this->tableName(), $new, 'IGNORE');
+    }
+
     public function getEventById($eventFlowId)
     {
         $sql = "SELECT * FROM {$this->tableName()} WHERE event_flow_id = :event_flow_id";
@@ -39,6 +104,12 @@ class EventsFlow extends VssModel
     public function insert($item)
     {
         $isTimeBasedId = (int) $item['network_block'] === 0;
+
+        if ($this->defer && !$isTimeBasedId)
+        {
+            $this->deferred[] = $item;
+            return self::kDEFERRED_ID;
+        }
 
         $sql = "
             SELECT event_flow_id
