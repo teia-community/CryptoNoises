@@ -32,9 +32,21 @@ class TezosNetwork extends AbstractCommand
             $lastSyncedLevel = \CryptoNoises\GatewayTezos\Gateway::GetLastFullyAnalyzedBlock();
             $progress = new ProgressLog('analyze for notifications');
 
+            // Lookups repeat across levels. A wallet added or frozen is seen within 10 s, token and contract
+            // rows (metadata arriving later) within a minute.
+            Models\Wallets::$statusCacheSec                         = 10;
+            \CryptoNoisesTezos\Models\Tokens::$cacheSec            = 60;
+            \CryptoNoisesTezos\Models\Contracts::$cacheSec         = 60;
+            $closedAt = 0;
+
             while (true)
             {
-                Vss::dbCloseAll();
+                // Reconnecting every level cost a seventh of the time; a lost connection is reopened anyway
+                if (time() - $closedAt >= 60)
+                {
+                    Vss::dbCloseAll();
+                    $closedAt = time();
+                }
 
                 if (Time::Microtime() - $tsStart > Config::runTimeLimit() || Shutdown::Requested())
                     break;

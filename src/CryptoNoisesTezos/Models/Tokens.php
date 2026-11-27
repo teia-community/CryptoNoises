@@ -30,12 +30,33 @@ class Tokens extends VssModel
         return 'tokens';
     }
 
+    /** Seconds a row may be reused within this process; 0 (the default) always reads. Set by readers that tolerate it */
+    public static int $cacheSec = 0;
+
+    private static array $cache = [];
+
     public function getItem(int $contractAdid, int $tokenUnid): ?array
     {
-        return Vss::dbTezos()->selectRow('*', $this->tableName(), [
+        if (self::$cacheSec <= 0)
+            return Vss::dbTezos()->selectRow('*', $this->tableName(), [
             'contract_adid' => $contractAdid,
             'token_unid'    => $tokenUnid,
         ]);
+
+        $key = "$contractAdid:$tokenUnid";
+
+        if (!isset(self::$cache[$key]) || time() - self::$cache[$key][1] > self::$cacheSec)
+        {
+            if (count(self::$cache) > 20000)
+                self::$cache = [];
+
+            self::$cache[$key] = [Vss::dbTezos()->selectRow('*', $this->tableName(), [
+            'contract_adid' => $contractAdid,
+            'token_unid'    => $tokenUnid,
+        ]), time()];
+        }
+
+        return self::$cache[$key][0];
     }
 
     public function open(int $contractAdid, string $contractAddress, int $tokenUnid, array $data): bool

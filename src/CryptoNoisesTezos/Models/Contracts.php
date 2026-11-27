@@ -23,9 +23,27 @@ class Contracts extends VssModel
         return 'contracts';
     }
 
+    /** Seconds a row may be reused within this process; 0 (the default) always reads. Set by readers that tolerate it */
+    public static int $cacheSec = 0;
+
+    private static array $cache = [];
+
     public function getItem(string $contractAddress): ?array
     {
-        return Vss::dbTezos()->selectRow('*', $this->tableName(), ['contract_address' => $contractAddress]);
+        if (self::$cacheSec <= 0)
+            return Vss::dbTezos()->selectRow('*', $this->tableName(), ['contract_address' => $contractAddress]);
+
+        $key = $contractAddress;
+
+        if (!isset(self::$cache[$key]) || time() - self::$cache[$key][1] > self::$cacheSec)
+        {
+            if (count(self::$cache) > 20000)
+                self::$cache = [];
+
+            self::$cache[$key] = [Vss::dbTezos()->selectRow('*', $this->tableName(), ['contract_address' => $contractAddress]), time()];
+        }
+
+        return self::$cache[$key][0];
     }
 
     public function open(int $bigmap, int $contractAdid, string $contractAddress, ?string $metadataUri): void

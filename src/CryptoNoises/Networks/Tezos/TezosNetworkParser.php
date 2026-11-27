@@ -63,9 +63,7 @@ class TezosNetworkParser
             if ($adid == null)
                 continue;
 
-            $walletItem = Models\Wallets::model()->getWalletItem($adid);
-
-            if ($walletItem == null)
+            if (Models\Wallets::model()->getWalletStatus($adid) === null)
                 continue;
 
             Models\QueueWalletsSync::model()->push($adid, $address, Models\QueueWalletsSync::kPRIORITY_Normal);

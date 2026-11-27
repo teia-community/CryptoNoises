@@ -175,11 +175,6 @@ class Wallet
         if ($adid === null)
             return false;
 
-        $wallet = Models\Wallets::model()->getWalletItem($adid);
-
-        if ($wallet == null)
-            return false;
-
-        return $wallet['status'] == Models\Wallets::kSTATUS_Active;
+        return Models\Wallets::model()->getWalletStatus($adid) == Models\Wallets::kSTATUS_Active;
     }
 }
