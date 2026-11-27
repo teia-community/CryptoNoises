@@ -361,7 +361,7 @@ abstract class Notification
     }
 
     /** Appends a line linking the operation(s) on an explorer; grouped events carry several hashes */
-    public function addTransactionLinks(array $urls, int $max = 5): self
+    public function addTransactionLinks(array $urls, ?string $via = null, int $max = 5): self
     {
         $urls = array_values(array_unique(array_filter($urls)));
         if (empty($urls))
@@ -373,7 +373,12 @@ abstract class Notification
 
         if (count($urls) == 1)
         {
-            $line = '🔗 '.$link('Transaction', $urls[0]);
+            // $via is an on-chain alias: escaped for Telegram, link brackets dropped for Discord
+            $caption = 'Transaction';
+            if ($via !== null && $via !== '')
+                $caption .= ' ('.(self::IsTelegram() ? htmlspecialchars($via, ENT_QUOTES) : str_replace(['[', ']', '(', ')'], '', $via)).')';
+
+            $line = '🔗 '.$link($caption, $urls[0]);
         }
         else
         {
