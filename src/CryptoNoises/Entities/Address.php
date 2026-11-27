@@ -38,25 +38,51 @@ class Address
         return $item ? $item['adid'] : null;
     }
 
-    /** @var array<string, array> address => row; an address keeps its adid, so found rows are kept */
-    private static array $items = [];
+    /** @var array<string, int> address => adid; an address keeps its adid, so found ones are kept */
+    private static array $adids = [];
+
+    private static function Remember(string $address, int $adid): int
+    {
+        if (count(self::$adids) > 50000)
+            self::$adids = [];
+
+        return self::$adids[$address] = $adid;
+    }
+
+    /** @return array<string, int> adid by address, for the addresses that exist; one query for the unknown ones */
+    public static function GetAdids(array $addresses): array
+    {
+        $result  = [];
+        $missing = [];
+
+        foreach ($addresses as $address)
+        {
+            if (isset(self::$adids[$address]))
+                $result[$address] = self::$adids[$address];
+            else if ($address !== null && $address !== '')
+                $missing[] = $address;
+        }
+
+        foreach (Models\Address::model()->getAdidsByAddresses($missing) as $address => $adid)
+            $result[$address] = self::Remember($address, (int) $adid);
+
+        return $result;
+    }
 
     private static function GetItemByAddress(?string $address, bool $isRequireAutoCreate): ?array
     {
         if ($address === null)
             return null;
 
-        if (isset(self::$items[$address]))
-            return self::$items[$address];
+        if (isset(self::$adids[$address]))
+            return ['adid' => self::$adids[$address], 'address' => $address];
 
         $item = Models\Address::model()->getItemByAddress($address);
 
         if (!empty($item))
         {
-            if (count(self::$items) > 50000)
-                self::$items = [];
-
-            return self::$items[$address] = $item;
+            self::Remember($address, (int) $item['adid']);
+            return $item;
         }
 
         if (!$isRequireAutoCreate)

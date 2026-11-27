@@ -29,6 +29,26 @@ class Address extends VssModel
             : null;
     }
 
+    /** @return array<string, int> adid by address, for the ones that exist */
+    public function getAdidsByAddresses(array $addresses): array
+    {
+        $result = [];
+
+        foreach (array_chunk(array_values(array_unique($addresses)), 500) as $chunk)
+        {
+            $params = [];
+            foreach ($chunk as $i => $address)
+                $params["a$i"] = $address;
+
+            $rows = Vss::db()->query("SELECT adid, address FROM {$this->tableName()} WHERE address IN (:".join(', :', array_keys($params)).")", $params);
+
+            foreach ($rows as $row)
+                $result[$row['address']] = (int) $row['adid'];
+        }
+
+        return $result;
+    }
+
     public function create(string $address): void
     {
         Vss::db()->insert($this->tableName(), [
