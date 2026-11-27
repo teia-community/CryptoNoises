@@ -21,6 +21,10 @@ return [
     // on a development environment they are written to the log either way.
     'notification_debug_footer' => false,
 
+    // Events older than this (minutes) are recorded but not notified, so catching up on history does not send it
+    // to everyone. 0 notifies everything.
+    'notify_max_event_age_min' => 60,
+
     //------------------------------------------------------------------------------------------------------------------
     // CryptoNoises (bots + API)
 
