@@ -226,6 +226,57 @@ class TezosNetwork extends AbstractNetwork
         return 'https://tzkt.io/'.$hash.($counter > 0 ? '/'.$counter : '');
     }
 
+    private static array $operationGroups = [];
+
+    /**
+     * The link to one operation and, when it is internal (it has a nonce), the contract call it ran in, such as
+     * "QuipuSwap TZD veto": the explorer shows that call, which is not what the notification is about.
+     *
+     * @return array{string, ?string}|null url, call
+     */
+    public function getOperationLink(string $hash, ?int $counter, ?int $operationId): ?array
+    {
+        $url = $this->getTransactionPublicUrl($hash, $counter);
+
+        if ($url === null || !($counter > 0) || !($operationId > 0))
+            return $url === null ? null : [$url, null];
+
+        $key = "$hash/$counter";
+
+        if (!isset(self::$operationGroups[$key]))
+        {
+            if (count(self::$operationGroups) > 100)
+                self::$operationGroups = [];
+
+            self::$operationGroups[$key] = \CryptoNoisesTezos\Vendors\Tzkt::GetOperationGroup($hash, $counter) ?? [];
+        }
+
+        $nonce = null;
+        $call  = null;
+
+        foreach (self::$operationGroups[$key] as $op)
+        {
+            if (($op['id'] ?? null) == $operationId)
+                $nonce = $op['nonce'] ?? null;
+
+            if ($call === null && ($op['type'] ?? null) == 'transaction' && !isset($op['nonce']))
+                $call = $op;
+        }
+
+        if ($nonce === null)
+            return [$url, null];
+
+        // A self-hosted TzKT has no aliases: GetAlias asks the aliases service
+        $address = $call['target']['address'] ?? null;
+        $target  = $call['target']['alias'] ?? null;
+        if (($target === null || $target === '') && $address !== null)
+            $target = \CryptoNoisesTezos\Vendors\Tzkt::GetAlias($address) ?? $this->getContractShortName($address);
+
+        $via = trim($target.' '.($call['parameter']['entrypoint'] ?? ''));
+
+        return [$url.'/'.(int) $nonce, $via !== '' ? $via : null];
+    }
+
     public function getTokenCollectionUrl(string $contract): string
     {
         $marketUrlItem = Models\Shared\MarketUrls::model()->getItemById(Models\Shared\MarketUrls::kDefaultTezos_Collection);

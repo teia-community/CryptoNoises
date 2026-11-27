@@ -403,6 +403,14 @@ class Tzkt extends AbstractVendor
     }
 
     /** The level of the last block at or before a unix time. Null when TzKT did not answer. */
+    /** The operations of one hash/counter: a contract call and the internal operations it emitted */
+    public static function GetOperationGroup(string $hash, int $counter): ?array
+    {
+        $result = self::GetDataJson(self::api()."/operations/$hash/$counter?micheline=0&quote=none", [], 1, 10);
+
+        return $result->isSuccess() && is_array($result->data) ? $result->data : null;
+    }
+
     /** XTZ price at a level: btc, eur, usd, cny, jpy, krw, eth, gbp */
     public static function GetQuote(int $level): ?array
     {
