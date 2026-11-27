@@ -55,10 +55,11 @@ class TezosNetworkParser
         }
 
         $addressList = array_unique($addressList);
+        $adids       = Address::GetAdids($addressList);
 
         foreach ($addressList as $address)
         {
-            $adid = Address::GetAdid($address);
+            $adid = $adids[$address] ?? null;
 
             if ($adid == null)
                 continue;
@@ -141,15 +142,33 @@ class TezosNetworkParser
 
     //------------------------------------------------------------------------------------------------------------------
 
+    /** @var array<string, int[]> EventFlow::groupKey() => indexes in $events; '' holds the events without a key */
+    private array $eventGroups = [];
+
     public function pushEvent(EventFlow $event): bool
     {
-        foreach ($this->events as $eventMain)
+        // Comparing with every event was quadratic: a dense block has hundreds. Only events with the same group
+        // key can group, so only those are tried, in the order they were found.
+        $key = $event->groupKey();
+
+        if ($key === null)
+            $candidates = array_keys($this->events);
+        else
         {
-            if ($eventMain->tryGroupEqualEvents($event))
+            $candidates = array_merge($this->eventGroups[$key] ?? [], $this->eventGroups[''] ?? []);
+
+            if (isset($this->eventGroups[$key], $this->eventGroups['']))
+                sort($candidates);
+        }
+
+        foreach ($candidates as $i)
+        {
+            if ($this->events[$i]->tryGroupEqualEvents($event))
                 return true;
         }
 
         $this->events[] = $event;
+        $this->eventGroups[$key ?? ''][] = array_key_last($this->events);
         return true;
     }
 
@@ -199,10 +218,13 @@ class TezosNetworkParser
         $this->activeProfilerTimestamp = microtime(true);
     }
 
+    /** @var array<string, string> class => short name */
+    private static array $shortClassNames = [];
+
     public function openProfilerObject(string $name, object $object): void
     {
-        $ex = explode("\\", get_class($object));
-        $className = end($ex);
+        $class     = get_class($object);
+        $className = self::$shortClassNames[$class] ??= substr(strrchr('\\'.$class, '\\'), 1);
 
         $this->activeProfilerName = $name.':'.$className;
         $this->activeProfilerTimestamp = microtime(true);

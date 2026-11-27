@@ -128,6 +128,36 @@ class EventFlow
      *      $this-event     -> will be kept
      *      $second-event   -> will be dropped
      */
+    /**
+     * Events that tryGroupEqualEvents() could group have the same key: it always compares these fields, and
+     * grouping never changes them. Null when one is not a plain string, which tryGroupEqualEvents compares loosely.
+     */
+    public function groupKey(): ?string
+    {
+        $skip = match ($this->event_type) {
+            Enum\EventFlowType::TokenTransfer_Send    => 'target_address',
+            Enum\EventFlowType::TokenTransfer_Receive => 'sender_address',
+            default                                   => null,
+        };
+
+        $parts = [];
+
+        foreach (['event_type', 'sender_address', 'target_address', 'token_address'] as $field)
+        {
+            if ($field === $skip)
+                continue;
+
+            $value = $this->$field;
+
+            if ($value !== null && !is_string($value))
+                return null;
+
+            $parts[] = (string) $value;     // null == '' for tryGroupEqualEvents too
+        }
+
+        return join('|', $parts);
+    }
+
     public function tryGroupEqualEvents(EventFlow $second): bool
     {
         // Not compared: entity ids, amounts, quantity, transaction counter / hash / event
