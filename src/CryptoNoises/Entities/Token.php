@@ -120,6 +120,31 @@ class Token
 
     // A wrapped token such as oXTZ is treated as 1:1 with XTZ, so the raw amount is returned and the thresholds
     // are applied to it. This is not correct for other tokens, so they are not handled (null is returned).
+    /** oXTZ is tez wrapped 1:1, so it converts like XTZ */
+    public function isWrappedXtz(): bool
+    {
+        return $this->tokenAddress == \CryptoCore\Setapp\ObjktCom::TokenKTID_oXTZ;
+    }
+
+    /**
+     * Fills symbol and decimals of the currencies the marketplaces accept: FA1.2 tokens carry no token metadata
+     * in their storage, so the indexer has none for them.
+     */
+    public function fillKnownCurrency(): self
+    {
+        $known = [
+            \CryptoCore\Setapp\ObjktCom::TokenKTID_oXTZ   => ['oXTZ', 6],
+            \CryptoCore\Setapp\ObjktCom::TokenKTID_USDtz  => ['USDtz', 6],
+            \CryptoCore\Setapp\ObjktCom::TokenKTID_uUSD   => ['uUSD', 12],
+            \CryptoCore\Setapp\ObjktCom::TokenKTID_Pole   => ['$POLE', 8],
+        ][$this->tokenAddress] ?? null;
+
+        if ($known !== null && ($this->symbol === null || $this->symbol === '' || $this->decimals === null))
+            [$this->symbol, $this->decimals] = $known;
+
+        return $this;
+    }
+
     public function convertTokenPriceToXtz(): ?float
     {
         if ($this->decimals != 6)
