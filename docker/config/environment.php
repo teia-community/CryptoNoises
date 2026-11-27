@@ -41,6 +41,10 @@ return [
     // on a development instance they are written to the log either way.
     'notification_debug_footer' => (bool) $envInt('NOTIFICATION_DEBUG_FOOTER', 0),
 
+    // Events older than this (minutes) are recorded but not notified, so catching up on history does not send it
+    // to everyone. 0 notifies everything.
+    'notify_max_event_age_min' => $envInt('NOTIFY_MAX_EVENT_AGE_MIN', 60),
+
     //------------------------------------------------------------------------------------------------------------------
     // CryptoNoises (bots + API)
 

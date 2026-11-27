@@ -101,6 +101,15 @@ class EventFlow
         $this->entity_subid             = $uniqueSubId;
     }
 
+    /** Catching up on history: the event is recorded, but nobody is notified about it */
+    private function isTooOldToNotify(): bool
+    {
+        $maxAgeMin = \CryptoNoises\Config::cfg()->notifyMaxEventAgeMin;
+        $time      = $this->transaction_event ? strtotime($this->transaction_event.' UTC') : false;
+
+        return $maxAgeMin > 0 && $time !== false && time() - $time > $maxAgeMin * 60;
+    }
+
     public function initInTezosNetworkByRecord($record, $uniqueSubId=0)
     {
         $this->network_id               = Config::kNETWORK_Tezos;
@@ -397,6 +406,9 @@ class EventFlow
             Log::Warning(get_class($this), __FUNCTION__, "Event not inserted: returned event_flow_id is 0", $item);
             return false;
         }
+
+        if ($this->isTooOldToNotify())
+            return true;
 
         //--------------------------------------------------------------------------------------------------------------
 

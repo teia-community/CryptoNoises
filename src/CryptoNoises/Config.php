@@ -76,6 +76,7 @@ class Config
 
     public string $publicDomain;                                            // public-app/ base URL
     public bool $notificationDebugFooter;                                   // debug ids appended to sent messages
+    public int $notifyMaxEventAgeMin;                                       // older events are not notified; 0 = all
     public string $publicApiUrl;                                            // public-api/ base URL (Telegram webhooks)
 
     // Matrix bot (environment.php: api.matrix): the client-server API it talks to - pantalaimon, which encrypts and
@@ -141,6 +142,7 @@ class Config
         $this->dbMain                               = \VssCfg::cfg()->getDbName('dbMain');
         $this->publicDomain                         = (string) Environment::get('api.public_domain');
         $this->notificationDebugFooter              = (bool) Environment::get('notification_debug_footer', false);
+        $this->notifyMaxEventAgeMin                 = (int) Environment::get('notify_max_event_age_min', 60);
         $this->publicApiUrl                         = (string) Environment::get('api.public_api_url');
         $this->links                                = (array) Environment::get('api.links', []);
 
