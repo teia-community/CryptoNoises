@@ -114,13 +114,9 @@ class TezosNetworkParser
         {
         foreach ($transactionsInBlocks as $recordsBlock)
         {
-            $recInit = Hunters\AbstractHunter::ExtractInitRecord($recordsBlock);
-
-            if ($recInit == null)
-            {
-                Log::Error(get_class($this), __FUNCTION__, "Cannot extract Init Record", $recordsBlock);
-                continue;
-            }
+            // An operation that is not a transaction (a smart rollup executing its outbox: Etherlink withdrawals)
+            // has internal transactions only. The first one, which the operation made, stands in for it.
+            $recInit = Hunters\AbstractHunter::ExtractInitRecord($recordsBlock) ?? array_shift($recordsBlock);
 
             $this->debug("- analyze group with init counter=".$recInit['counter'].", hash=".$recInit['hash'], ' >> ');
 
