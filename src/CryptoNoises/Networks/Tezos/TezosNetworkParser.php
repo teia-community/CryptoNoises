@@ -122,7 +122,7 @@ class TezosNetworkParser
             foreach ($hunters as $hunter)
             {
                 $this->openProfilerObject('Hunters', $hunter);
-                $result = $hunter->parseTransaction($recInit, $recordsBlock);
+                $result = $this->runHunter($hunter, $recInit, $recordsBlock);
                 $this->closeProfiler();
 
                 if ($result)
@@ -138,6 +138,41 @@ class TezosNetworkParser
         }
 
         return true;
+    }
+
+    /**
+     * A bug in one hunter must not stop the stage: its PHP warnings become exceptions, which are reported, and the
+     * operation goes on to the next hunter. Deprecations stay with the previous handler (logged, not fatal).
+     */
+    private function runHunter(object $hunter, array $recInit, array $records): bool
+    {
+        $previous = null;
+        $previous = set_error_handler(function (int $level, string $text, string $file = '', int $line = 0) use (&$previous): bool
+        {
+            if (!($level & error_reporting()))
+                return false;
+
+            if ($level & (E_DEPRECATED | E_USER_DEPRECATED))
+                return $previous !== null ? (bool) $previous($level, $text, $file, $line) : false;
+
+            throw new \ErrorException($text, 0, $level, $file, $line);
+        });
+
+        try
+        {
+            return $hunter->parseTransaction($recInit, $records);
+        }
+        catch (\Throwable $e)
+        {
+            // The operation goes to the data, not the message: alerts are de-duplicated by message
+            $class = substr(strrchr('\\'.get_class($hunter), '\\'), 1);
+            Log::Error($class, 'parseTransaction', $e->getMessage().' ('.basename($e->getFile()).':'.$e->getLine().')', $recInit);
+            return false;
+        }
+        finally
+        {
+            restore_error_handler();
+        }
     }
 
     //------------------------------------------------------------------------------------------------------------------

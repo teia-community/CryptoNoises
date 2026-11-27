@@ -44,7 +44,8 @@ class VersumHunter_Auctions extends VersumHunter
             if ($recValue['currency'] !== null)
                 throw new Exception('Key currency is not NULL');
 
-            $duration = strtotime($recValue['end_timestamp']) - Time::Time();
+            // From the operation, not now: the indexer may be catching up on history
+            $duration = strtotime($recValue['end_timestamp']) - strtotime($recInit['timestamp'].' UTC');
 
             $event = new EventFlow();
             $event->initInTezosNetworkByRecord($recInit);

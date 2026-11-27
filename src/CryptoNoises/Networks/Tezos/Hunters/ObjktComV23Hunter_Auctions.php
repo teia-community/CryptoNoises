@@ -93,9 +93,13 @@ class ObjktComV23Hunter_Auctions extends ObjktComV23Hunter
             $event->token_address           = $recValue['token']['address'];
             $event->token_id                = $recValue['token']['token_id'];
 
-            $event->custom_data             = [
-                CustomData::kDURATION => strtotime($recValue['end_time']) - strtotime($recValue['start_time']),
-            ];
+            // v2 auctions have a start and an end time; the v3 English auctions a duration, and no start time
+            // when the auction starts with its first bid
+            $duration = isset($recValue['duration'])
+                ? (int) $recValue['duration']
+                : (isset($recValue['end_time'], $recValue['start_time']) ? strtotime($recValue['end_time']) - strtotime($recValue['start_time']) : null);
+
+            $event->custom_data             = $duration !== null ? [CustomData::kDURATION => $duration] : [];
 
             $this->parser->pushEvent($event);
 
