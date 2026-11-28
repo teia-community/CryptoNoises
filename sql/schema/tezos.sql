@@ -292,7 +292,7 @@ CREATE TABLE IF NOT EXISTS `contracts` (
 CREATE TABLE IF NOT EXISTS `domains_expiry` (
   `domain` varbinary(1024) NOT NULL DEFAULT '',
   `state` enum('active','removed') NOT NULL DEFAULT 'active',
-  `ts_expired` timestamp NULL DEFAULT NULL,
+  `ts_expired` datetime NULL DEFAULT NULL,
   PRIMARY KEY (`domain`),
   KEY `ts_expired` (`ts_expired`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

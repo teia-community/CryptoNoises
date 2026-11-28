@@ -53,7 +53,7 @@ class Domains extends Notification
             }
 
             $expireDateTime = Phrase::FriendlyDateTime($userDomain->expireDateTime);
-            $expireDuration = Phrase::FriendlyDuration($userDomain->expireDuration);
+            $expireDuration = Phrase::FriendlyDuration(abs($userDomain->expireDuration));
 
             if ($userDomain->expireDuration <= 0)
             {
