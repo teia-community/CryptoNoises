@@ -201,52 +201,52 @@ services:
   # Indexer: queue workers
   #
   # Interchangeable - the queue hands each worker a different task with SELECT ... FOR UPDATE SKIP LOCKED - so the
-  # replica count is yours to choose. The numbers below are the thread counts the old crontab used.
-  #   docker compose up -d --scale worker-tokens-metadata=20
+  # replica count is yours to choose: WORKERS_* in .env. More workers mostly move the load to the database; tasks
+  # found near the chain head go ahead of a catch-up backlog, so a few workers keep up with new tokens.
   #-------------------------------------------------------------------------------------------------------------------
   worker-contracts-metadata:
     <<: *worker
     command: ["/opt/cryptonoises/commands/run-tezos", "/jobs/exec", "jobId=sync-contracts-metadata"]
     deploy:
-      replicas: 4
+      replicas: ${WORKERS_CONTRACTS_METADATA:-1}
 
   worker-detect-tokens:
     <<: *worker
     command: ["/opt/cryptonoises/commands/run-tezos", "/jobs/exec", "jobId=detect-new-tokens"]
     deploy:
-      replicas: 4
+      replicas: ${WORKERS_DETECT_TOKENS:-1}
 
   worker-tokens-metadata:
     <<: *worker
     command: ["/opt/cryptonoises/commands/run-tezos", "/jobs/exec", "jobId=sync-tokens-metadata"]
     deploy:
-      replicas: 10
+      replicas: ${WORKERS_TOKENS_METADATA:-2}
 
   worker-tokens-metadata-merge:
     <<: *worker
     command: ["/opt/cryptonoises/commands/run-tezos", "/jobs/exec", "jobId=merge-tokens-metadata"]
     deploy:
-      replicas: 1
+      replicas: ${WORKERS_TOKENS_METADATA_MERGE:-1}
 
   # Downloads token media and builds the previews, so this is the ImageMagick / ffmpeg heavy one
   worker-ipfs-primary:
     <<: *worker
     command: ["/opt/cryptonoises/commands/run-tezos", "/jobs/exec", "jobId=sync-ipfs.primary"]
     deploy:
-      replicas: 10
+      replicas: ${WORKERS_IPFS_PRIMARY:-2}
 
   # Second, manually filled media queue: nothing in the code pushes to it
   worker-ipfs-secondary:
     <<: *worker
     command: ["/opt/cryptonoises/commands/run-tezos", "/jobs/exec", "jobId=sync-ipfs.secondary"]
     deploy:
-      replicas: 3
+      replicas: ${WORKERS_IPFS_SECONDARY:-1}
 
   worker-profiles:
     <<: *worker
     command: ["/opt/cryptonoises/commands/run-tezos", "/jobs/exec", "jobId=sync-profiles"]
     deploy:
-      replicas: 10
+      replicas: ${WORKERS_PROFILES:-1}
 
   #-------------------------------------------------------------------------------------------------------------------
   # Optional IPFS node the workers fetch token metadata and media through, instead of a public gateway

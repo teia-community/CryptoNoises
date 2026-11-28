@@ -550,7 +550,7 @@ The Docker stack runs them as processes instead, so nothing restarts them on a t
 
 | | What | Scaling |
 |---|------|---------|
-| `worker-*` | The queue workers | **Scale at will.** `docker compose up -d --scale worker-tokens-metadata=20` |
+| `worker-*` | The queue workers | **Scale at will:** `WORKERS_*` in `.env`. More workers mostly move the load to the database |
 | `stage-*` | The sequential stages: both syncs, both sync-checks, both analyzers, the bots' wallet events | **Single instance each.** Two copies would fight over one cursor. |
 | `bots-*` | The bots' poll loops (Telegram notifiers, mint / update events, wallet sync, exchange rates) | One each. |
 | `scheduler` | supercronic, ~15 entries that genuinely want a clock | One. |

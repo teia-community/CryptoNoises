@@ -97,6 +97,8 @@ class AnalyzeBigmapUpdates extends AbstractCommand
 
                 Models\FixerBigmapUpdatesAnalyze::model()->jobOpen($level);
 
+                \CryptoCore\Models\Queues\QueueAbstract::$defaultPriority = \CryptoCore\Models\Queues\QueueAbstract::PriorityForLevel($level, $lastSyncedLevelIndex);
+
                 $analyzer = new Analyzers\AnalyzeBigmapUpdates();
                 $itemsCount = $analyzer->analyze($level);
 

@@ -71,6 +71,7 @@ class AnalyzeTransactions extends AbstractCommand
 
                 $analyzer = new Analyzers\AnalyzeTransactions();
                 $analyzer->verbose = $this->verbose;
+                \CryptoCore\Models\Queues\QueueAbstract::$defaultPriority = \CryptoCore\Models\Queues\QueueAbstract::PriorityForLevel($level, $lastFullySyncedLevel);
                 $analyzer->analyze($level);
 
                 Vss::dbTezos()->transactionBegin();

@@ -105,7 +105,12 @@ trait JobsController_Executor
 
             // claimNextTask() already put the task into 'syncing'
 
+            // Tasks this one pushes inherit its priority
+            \CryptoCore\Models\Queues\QueueAbstract::$defaultPriority = (int) $taskItem['priority'];
+
             $result = $jobInstance->execute($taskItem);
+
+            \CryptoCore\Models\Queues\QueueAbstract::$defaultPriority = \CryptoCore\Models\Queues\QueueAbstract::kPRIORITY_Default;
 
             $jobExecTime = Time::Microtime() - $tsJobStart;
 

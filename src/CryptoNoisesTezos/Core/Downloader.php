@@ -18,10 +18,16 @@ class Downloader
 
     public static function GetDirect(string $url, ?string $cacheFullPath = null, int $timeout=300): ?string
     {
+        // Shared by the workers: the file may go between the check and the read, then it is fetched again
         if ($cacheFullPath && file_exists($cacheFullPath))
         {
-            touch($cacheFullPath);
-            return file_get_contents($cacheFullPath);
+            $cached = @file_get_contents($cacheFullPath);
+
+            if ($cached !== false)
+            {
+                @touch($cacheFullPath);
+                return $cached;
+            }
         }
 
         $response = SafeCurl::Fetch($url, $timeout, Config::kDOWNLOAD_MAX_METADATA_BYTES);
@@ -97,10 +103,8 @@ class Downloader
 
         $cachePathName = $this->getCachePathName();
 
-        if (!file_exists($cachePathName))
-            return false;
-
-        return unlink($cachePathName);
+        // Another worker may remove it at the same time
+        return @unlink($cachePathName);
     }
 
     //------------------------------------------------------------------------------------------------------------------
