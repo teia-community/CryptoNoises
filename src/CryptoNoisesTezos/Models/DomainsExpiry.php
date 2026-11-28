@@ -26,7 +26,9 @@ class DomainsExpiry extends VssModel
         $data = [
             'domain'        => $domain,
             'state'         => self::kSTATE_Active,
-            'ts_expired'    => Time::NormalizeTimestamp($expired),
+            // DATETIME, not Time::NormalizeTimestamp(): that one drops dates after 2030 (TIMESTAMP columns end in
+            // 2038), and domains are registered for up to 10 years
+            'ts_expired'    => ($time = strtotime($expired)) !== false ? gmdate('Y-m-d H:i:s', $time) : null,
         ];
 
         Vss::dbTezos()->insertOrUpdate($this->tableName(), $data, $data);
