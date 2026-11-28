@@ -5,6 +5,8 @@ namespace CryptoNoises\GatewayTezos;
 use CryptoNoises\Entities\UserDomain;
 class Domains
 {
+    const kHIDE_EXPIRED_AFTER_SEC = 90 * 86400;
+
     /**
      * @param string $address
      * @return UserDomain[]
@@ -19,7 +21,8 @@ class Domains
         {
             $tsExpired = \CryptoNoises\GatewayTezos\Models\DomainsExpiry::model()->getExpireDateForDomain($domain);
 
-            if ($tsExpired == null)
+            // Domains that expired long ago are gone from Tezos Domains: not worth listing
+            if ($tsExpired == null || strtotime($tsExpired.' UTC') < time() - self::kHIDE_EXPIRED_AFTER_SEC)
                 continue;
 
             $result[] = new UserDomain($domain, $address, $tsExpired);
