@@ -101,7 +101,7 @@ class EventFlow
         $this->entity_subid             = $uniqueSubId;
     }
 
-    /** Catching up on history: the event is recorded, but nobody is notified about it */
+    /** Catching up on history: older events are neither notified nor recorded */
     public function isTooOldToNotify(): bool
     {
         $maxAgeMin = \CryptoNoises\Config::cfg()->notifyMaxEventAgeMin;
@@ -336,14 +336,17 @@ class EventFlow
     // TODO: this method is heavy: 500 transactions / saves take about 120-150 seconds.
     public function save(): bool
     {
+        // Catching up on history: nobody is notified about these, and nothing else reads events_flow
+        if ($this->isTooOldToNotify())
+            return true;
+
         $senderAddress = $this->sender_address;
         $targetAddress = $this->target_address;
         $feeAddress    = $this->fee_address;
 
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-        // Only the notifications use it, and events too old to notify return before them
-        $tokenEntity = $this->isTooOldToNotify() ? null : GatewayTezos\Tokens::GetTokenDetails($this->token_address, $this->token_id, true);
+        $tokenEntity = GatewayTezos\Tokens::GetTokenDetails($this->token_address, $this->token_id, true);
 
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         // Special fixes for Address(es) values
@@ -437,9 +440,6 @@ class EventFlow
             Log::Warning(get_class($this), __FUNCTION__, "Event not inserted: returned event_flow_id is 0", $item);
             return false;
         }
-
-        if ($this->isTooOldToNotify())
-            return true;
 
         //--------------------------------------------------------------------------------------------------------------
 
