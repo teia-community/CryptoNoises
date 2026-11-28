@@ -92,8 +92,8 @@ class Phrase
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-    public string $stateReceive                         = '🔔 Receive';
-    public string $stateIgnore                          = '🔕 Ignore';
+    public string $stateReceive                         = '🔔 On';
+    public string $stateIgnore                          = '🔕 Off';
 
     public string $refresh                              = '🔄 Refresh';
 
