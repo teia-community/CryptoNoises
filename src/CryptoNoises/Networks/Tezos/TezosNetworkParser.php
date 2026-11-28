@@ -223,27 +223,10 @@ class TezosNetworkParser
 
         $count = count($this->events);
 
-        // Events too old to notify (catching up on history) are written together at the end of the block
-        $model = Models\EventsFlow::model();
-
-        $model->discardDeferred();
-
-        try
+        foreach ($this->events as $idx => $event)
         {
-            foreach ($this->events as $idx => $event)
-            {
-                $model->defer = $event->isTooOldToNotify();
-                $event->save();
-                $this->debug("TezosNetworkParser:save: #".($idx+1)."/$count saved");
-            }
-
-            $model->defer = false;
-            $model->flushDeferred();
-        }
-        finally
-        {
-            $model->defer = false;
-            $model->discardDeferred();
+            $event->save();
+            $this->debug("TezosNetworkParser:save: #".($idx+1)."/$count saved");
         }
         EventFlow::LogExecAt_SaveData();
 
