@@ -41,20 +41,35 @@ abstract class QueueAbstract extends VssModel
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+    const kPRIORITY_Default = 5;
+    const kPRIORITY_Fresh   = 3;        // found near the chain head: ahead of a catch-up backlog
+    const kFRESH_LEVELS     = 360;      // how close to the head counts as near
+
+    /**
+     * Priority of pushes that do not give one. The analyzers raise it while near the chain head, and a worker
+     * passes on its own task's, so the follow-up tasks of a new token (metadata, merge, previews) keep it.
+     */
+    public static int $defaultPriority = self::kPRIORITY_Default;
+
+    public static function PriorityForLevel(int $level, int $headLevel): int
+    {
+        return $headLevel - $level <= self::kFRESH_LEVELS ? self::kPRIORITY_Fresh : self::kPRIORITY_Default;
+    }
+
     /**
      * @param array $params
      * @param string|null $syncMode
-     * @param int $priority             {1..9} - 1=HIGHEST .. 9=LOWEST
+     * @param int|null $priority        {1..9} - 1=HIGHEST .. 9=LOWEST; null = $defaultPriority
      * @return void
      */
-    public function push(array $params, ?string $syncMode = null, int $priority = 5): void
+    public function push(array $params, ?string $syncMode = null, ?int $priority = null): void
     {
         $tableName = $this->tableName();
 
         if (isset($params['state']) && $params['state'] == self::kState_Error)
             $tableName .= '__failed';
 
-        $params['priority']  = $priority;
+        $params['priority']  = $priority ?? self::$defaultPriority;
         $params['sync_mode'] = $syncMode;
 
         $this->dbConnection()->insert($tableName, $params, 'IGNORE');
@@ -151,6 +166,24 @@ abstract class QueueAbstract extends VssModel
     public function getNextTask(int $threadIndex, int $threadCount, bool $lockRow = false): ?array
     {
         $lock = $lockRow ? ' FOR UPDATE SKIP LOCKED' : '';
+
+        // Raised-priority tasks (found near the chain head) go first in every select mode, ahead of a backlog. A
+        // range on the claim index (state, priority, iteration, queue_task_id), so it stays cheap on a big queue.
+        $sharding = $threadCount > 1 && $threadIndex < $threadCount ? " AND queue_task_id % $threadCount = $threadIndex " : '';
+
+        $urgent = $this->dbConnection()->queryRow("
+            SELECT *
+            FROM {$this->tableName()}
+            WHERE state = :state
+              AND priority < :priority
+              AND ts_activate <= NOW()
+              $sharding
+            ORDER BY priority, iteration, queue_task_id
+            LIMIT 1
+        ".$lock, ['state' => self::kState_Idle, 'priority' => self::kPRIORITY_Default]);
+
+        if ($urgent !== null)
+            return $urgent;
 
         if ($this->selectMode == self::kSELECT_MODE_FirstInFirstOut)
         {
