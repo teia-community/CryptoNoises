@@ -114,8 +114,9 @@ abstract class AbstractJob extends \CryptoCore\Jobs\AbstractJob
 
         Models\Log\IpfsCache::model()->save($metadataUri, $jsonString);
 
-        if ($cacheFullPath &&  file_exists($cacheFullPath))
-            unlink($cacheFullPath);
+        // Tokens sharing a metadata URI share this file: another worker may have removed it already
+        if ($cacheFullPath)
+            @unlink($cacheFullPath);
 
         return $json;
     }
